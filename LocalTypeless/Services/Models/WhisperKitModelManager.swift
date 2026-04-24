@@ -6,10 +6,7 @@ actor WhisperKitModelManager: ASRModelManaging {
     private let store: ModelStatusStore
     private var kit: WhisperKit?
     private var inFlight: Task<Void, Error>?
-    // Matches the actual folder name in argmaxinc/whisperkit-coreml.
-    // The plain "-turbo" spelling does not exist; the "_turbo" v20240930 variant is
-    // the turbo model recommended for Apple Silicon Macs.
-    private let modelVariant = "openai_whisper-large-v3-v20240930_turbo"
+    private let modelVariant = "openai_whisper-large-v3-turbo"
 
     init(store: ModelStatusStore) {
         self.store = store
@@ -48,7 +45,6 @@ actor WhisperKitModelManager: ASRModelManaging {
             // per-byte updates but isn't wired yet — acceptable for v1.
             let config = WhisperKitConfig(
                 model: modelVariant,
-                downloadBase: ModelStorage.root,
                 modelRepo: "argmaxinc/whisperkit-coreml",
                 verbose: false,
                 logLevel: .info,

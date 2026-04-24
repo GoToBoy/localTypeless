@@ -12,12 +12,31 @@ final class AppSettingsTests: XCTestCase {
     func test_defaults() {
         let (s, _) = makeSettings()
         XCTAssertEqual(s.hotkeyBinding, .default)
+        XCTAssertEqual(s.hotkeyMode, .toggle)
         XCTAssertEqual(s.asrLanguageMode, .auto)
         XCTAssertEqual(s.uiLanguageMode, .system)
         XCTAssertEqual(s.polishPromptOverride, "")
         XCTAssertTrue(s.audioRetentionEnabled == false)
         XCTAssertEqual(s.audioRetentionDays, 7)
         XCTAssertEqual(s.launchAtLogin, false)
+        XCTAssertEqual(s.pasteMethod, .cgEvent)
+        XCTAssertTrue(s.preserveClipboard)
+        XCTAssertFalse(s.pauseMediaDuringRecording)
+    }
+
+    func test_newPrefsPersist() {
+        let storage = InMemorySettingsStorage()
+        let first = AppSettings(storage: storage)
+        first.hotkeyMode = .pushToTalk
+        first.pasteMethod = .appleScript
+        first.preserveClipboard = false
+        first.pauseMediaDuringRecording = true
+
+        let second = AppSettings(storage: storage)
+        XCTAssertEqual(second.hotkeyMode, .pushToTalk)
+        XCTAssertEqual(second.pasteMethod, .appleScript)
+        XCTAssertFalse(second.preserveClipboard)
+        XCTAssertTrue(second.pauseMediaDuringRecording)
     }
 
     func test_writes_persist() {

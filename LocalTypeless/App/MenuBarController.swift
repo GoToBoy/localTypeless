@@ -53,17 +53,9 @@ final class MenuBarController {
             statusLabel.isEnabled = false
             menu.addItem(statusLabel)
 
-            // Only surface the "Download…" item when the model is
-            // genuinely missing. If the bits are on disk (`.downloaded`),
-            // being fetched (`.downloading`), or already warming into RAM
-            // (`.loading`), a download item is confusing — the same state
-            // we already gate on in AppDelegate.handleToggle(). When the
-            // status observer fires on the transition into `.resident`,
-            // the menu rebuilds and the label flips to "ready".
-            switch status {
-            case .resident, .downloaded, .loading, .downloading:
-                break
-            case .notDownloaded, .failed:
+            if case .resident = status {
+                // Model is ready — no download item needed
+            } else {
                 let dl = NSMenuItem(title: String(localized: "Download \(name)…"),
                                     action: #selector(downloadModelAction(_:)),
                                     keyEquivalent: "")

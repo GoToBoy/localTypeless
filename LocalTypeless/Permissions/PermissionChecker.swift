@@ -4,15 +4,7 @@ import ApplicationServices
 @preconcurrency import IOKit.hid
 
 @MainActor
-protocol PermissionCheckerProtocol: AnyObject {
-    var microphoneStatus: PermissionChecker.Status { get }
-    var accessibilityStatus: PermissionChecker.Status { get }
-    var inputMonitoringStatus: PermissionChecker.Status { get }
-    func requestMicrophoneIfNeeded() async -> PermissionChecker.Status
-}
-
-@MainActor
-final class PermissionChecker: PermissionCheckerProtocol {
+final class PermissionChecker {
 
     enum Status: Equatable {
         case granted

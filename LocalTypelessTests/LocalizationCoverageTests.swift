@@ -26,10 +26,10 @@ final class LocalizationCoverageTests: XCTestCase {
                 missingZh.append(key)
                 continue
             }
-            if entry.localizations["en"]?.isTranslated != true {
+            if entry.localizations["en"]?.stringUnit.state != "translated" {
                 missingEn.append(key)
             }
-            if entry.localizations["zh-Hans"]?.isTranslated != true {
+            if entry.localizations["zh-Hans"]?.stringUnit.state != "translated" {
                 missingZh.append(key)
             }
         }
@@ -48,34 +48,12 @@ final class LocalizationCoverageTests: XCTestCase {
         }
 
         struct Localization: Decodable {
-            let stringUnit: StringUnit?
-            let variations: [String: Variation]?
-
-            var isTranslated: Bool {
-                if stringUnit?.state == "translated" {
-                    return true
-                }
-                guard let variations else { return false }
-                return variations.values.allSatisfy(\.isTranslated)
-            }
+            let stringUnit: StringUnit
         }
 
         struct StringUnit: Decodable {
             let state: String
             let value: String
-        }
-
-        struct Variation: Decodable {
-            let stringUnit: StringUnit?
-            let variations: [String: Variation]?
-
-            var isTranslated: Bool {
-                if stringUnit?.state == "translated" {
-                    return true
-                }
-                guard let variations else { return false }
-                return variations.values.allSatisfy(\.isTranslated)
-            }
         }
     }
 
@@ -120,10 +98,6 @@ final class LocalizationCoverageTests: XCTestCase {
 
                     // Skip empty keys
                     guard !key.isEmpty else { return }
-
-                    // Skip decorative separators; they're UI punctuation, not
-                    // translatable strings.
-                    guard key != "·" else { return }
 
                     // Skip interpolated strings — the format-specifier form (e.g. "Error: %@")
                     // is catalogued separately and will be hit by its own regex match path.

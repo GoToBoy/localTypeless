@@ -172,21 +172,8 @@
     },
     "Keep for %lld day(s)" : {
       "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one"   : { "stringUnit" : { "state" : "translated", "value" : "Keep for %lld day"  } },
-              "other" : { "stringUnit" : { "state" : "translated", "value" : "Keep for %lld days" } }
-            }
-          }
-        },
-        "zh-Hans" : {
-          "variations" : {
-            "plural" : {
-              "other" : { "stringUnit" : { "state" : "translated", "value" : "保留 %lld 天" } }
-            }
-          }
-        }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Keep for %lld day(s)" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "保留 %lld 天" } }
       }
     },
     "Polish prompt" : {
@@ -373,12 +360,6 @@
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Recording…" } },
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在录制…" } }
-      }
-    },
-    "Recording" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Recording" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在录制" } }
       }
     },
     "Transcribing…" : {
@@ -603,160 +584,82 @@
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "重新打开欢迎教程…" } }
       }
     },
-    "Quit & Relaunch" : {
+    "Mode" : {
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Quit & Relaunch" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "退出并重新启动" } }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Mode" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "模式" } }
       }
     },
-    "If a permission still shows Grant after enabling it in System Settings, quit and reopen the app." : {
+    "Toggle (press to start, press to stop)" : {
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "If a permission still shows Grant after enabling it in System Settings, quit and reopen the app." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "如果在「系统设置」中开启某项权限后，按钮仍然显示「授予」，请退出并重新打开应用。" } }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Toggle (press to start, press to stop)" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "切换（按一下开始，再按停止）" } }
       }
     },
-    "Dev builds change identity on every rebuild, which can orphan your previous grants. If permissions stay denied after enabling them, reset and grant again, then quit & relaunch." : {
+    "Push-to-talk (hold to record)" : {
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Dev builds change identity on every rebuild, which can orphan your previous grants. If permissions stay denied after enabling them, reset and grant again, then quit & relaunch." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "开发版应用每次重新构建都会改变身份，可能使之前授予的权限失效。若开启权限后仍显示被拒，请先重置再重新授予，然后退出并重新启动。" } }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Push-to-talk (hold to record)" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "按住说话（按住录音）" } }
       }
     },
-    "Reset permissions" : {
+    "Push-to-talk requires a modifier-only shortcut with the ‘Tap’ trigger; falling back to toggle." : {
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Reset permissions" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "重置权限" } }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Push-to-talk requires a modifier-only shortcut with the ‘Tap’ trigger; falling back to toggle." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "按住说话需要「仅修饰键」配合「按下」触发；当前绑定将回退为切换模式。" } }
       }
     },
-    "Permissions reset" : {
+    "Paste behavior" : {
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Permissions reset" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "权限已重置" } }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Paste behavior" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "粘贴行为" } }
       }
     },
-    "All permission grants for this app have been cleared. Grant them again from the rows above, then click Quit & Relaunch." : {
+    "Paste method" : {
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "All permission grants for this app have been cleared. Grant them again from the rows above, then click Quit & Relaunch." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "本应用的所有权限已被清除。请在上方逐项重新授予，然后点击「退出并重新启动」。" } }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Paste method" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "粘贴方式" } }
       }
     },
-    "OK" : {
+    "Synthesize ⌘V (fast, default)" : {
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "OK" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "好" } }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Synthesize ⌘V (fast, default)" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "模拟 ⌘V（快速，默认）" } }
       }
     },
-    "Show app in Finder" : {
+    "AppleScript (needs Automation)" : {
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Show app in Finder" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "在 Finder 中显示" } }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "AppleScript (needs Automation)" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "AppleScript（需自动化权限）" } }
       }
     },
-    "If System Settings can't find the app when you click +, drag this app's icon from Finder into the permissions list." : {
+    "Preserve clipboard after paste" : {
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "If System Settings can't find the app when you click +, drag this app's icon from Finder into the permissions list." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "如果在「系统设置」中点击「+」找不到此应用，请从 Finder 把它的图标拖到权限列表中。" } }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Preserve clipboard after paste" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "粘贴后恢复剪贴板内容" } }
       }
     },
-    "Loading model…" : {
+    "If an app filters synthesized key events or your keyboard layout rewrites ⌘-layer keys, try the AppleScript method." : {
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Loading model…" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在加载模型…" } }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "If an app filters synthesized key events or your keyboard layout rewrites ⌘-layer keys, try the AppleScript method." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "若目标应用过滤模拟键事件，或你的键盘布局会重映射 ⌘ 层按键，可切换到 AppleScript 方式。" } }
       }
     },
-    "The speech model is still loading into memory. Please try the hotkey again in a few seconds." : {
+    "Recording" : {
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "The speech model is still loading into memory. Please try the hotkey again in a few seconds." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "语音模型仍在加载到内存中，请过几秒再按快捷键。" } }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Recording" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "录音" } }
       }
     },
-    "The polish model is still loading into memory. Please try the hotkey again in a few seconds." : {
+    "Pause media while recording" : {
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "The polish model is still loading into memory. Please try the hotkey again in a few seconds." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "润色模型仍在加载到内存中，请过几秒再按快捷键。" } }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pause media while recording" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "录音时暂停媒体播放" } }
       }
     },
-    "On disk" : {
+    "Pauses Music, Spotify, or browser audio during recording so the microphone doesn't capture playback." : {
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "On disk" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已下载" } }
-      }
-    },
-    "Microphone not ready" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Microphone not ready" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "麦克风未就绪" } }
-      }
-    },
-    "macOS was still resolving the default input device. Try the hotkey again in a moment." : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "macOS was still resolving the default input device. Try the hotkey again in a moment." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "macOS 还在解析默认输入设备，请稍后再按快捷键。" } }
-      }
-    },
-    "Could not open history database" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Could not open history database" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法打开历史记录数据库" } }
-      }
-    },
-    "Dictation will still work, but transcripts won't be saved to history." : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Dictation will still work, but transcripts won't be saved to history." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "听写功能仍可正常使用，但转录内容将不会保存到历史记录。" } }
-      }
-    },
-    "Model Setup" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Model Setup" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "模型设置" } }
-      }
-    },
-    "Settings" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Settings" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "设置" } }
-      }
-    },
-    "Delete Selected" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete Selected" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "删除所选" } }
-      }
-    },
-    "No results for \"%@\"" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "No results for \"%@\"" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "没有找到与\"%@\"相关的结果" } }
-      }
-    },
-    "Search transcripts" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Search transcripts" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "搜索转录内容" } }
-      }
-    },
-    "Copy Polished Text" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Copy Polished Text" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "复制润色文本" } }
-      }
-    },
-    "Copy Raw Transcript" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Copy Raw Transcript" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "复制原始转录" } }
-      }
-    },
-    "Re-inject" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Re-inject" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "重新注入" } }
-      }
-    },
-    "Delete" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "删除" } }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pauses Music, Spotify, or browser audio during recording so the microphone doesn't capture playback." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "录音期间暂停 Music、Spotify 或浏览器音频，避免麦克风录进播放声音。" } }
       }
     }
   }

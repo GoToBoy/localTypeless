@@ -10,6 +10,24 @@ struct SettingsAdvancedTab: View {
 
     var body: some View {
         Form {
+            Section("Paste behavior") {
+                Picker("Paste method", selection: $settings.pasteMethod) {
+                    Text("Synthesize ⌘V (fast, default)").tag(PasteMethod.cgEvent)
+                    Text("AppleScript (needs Automation)").tag(PasteMethod.appleScript)
+                }
+                Toggle("Preserve clipboard after paste", isOn: $settings.preserveClipboard)
+                Text("If an app filters synthesized key events or your keyboard layout rewrites ⌘-layer keys, try the AppleScript method.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Section("Recording") {
+                Toggle("Pause media while recording", isOn: $settings.pauseMediaDuringRecording)
+                Text("Pauses Music, Spotify, or browser audio during recording so the microphone doesn't capture playback.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
             Section("Audio retention") {
                 Toggle("Keep raw audio on disk", isOn: $settings.audioRetentionEnabled)
                 Stepper(value: $settings.audioRetentionDays, in: 1...30) {
@@ -53,11 +71,7 @@ struct SettingsAdvancedTab: View {
     }
 
     @ViewBuilder
-    // BUG-L02 fix: use LocalizedStringKey so Text(label) resolves to
-    // Text(_ key: LocalizedStringKey) and looks up the xcstrings catalog.
-    // A String parameter would select Text(_ content: String) which skips
-    // localization even when the literal key exists in the catalog.
-    private func modelRow(label: LocalizedStringKey,
+    private func modelRow(label: String,
                            status: ModelStatus,
                            onDownload: @escaping () -> Void) -> some View {
         HStack {
@@ -66,20 +80,9 @@ struct SettingsAdvancedTab: View {
                 Text(describe(status)).font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
-            // Only offer "Download" when the model is genuinely missing.
-            // A Download button sitting next to "Loading…" (the common
-            // post-restart state while weights warm into RAM) is
-            // misleading — same distinction applied in the menu bar and
-            // the hotkey gate.
-            switch status {
-            case .resident:
+            if case .resident = status {
                 Label("Ready", systemImage: "checkmark.seal.fill").foregroundStyle(.green)
-            case .downloading, .loading:
-                ProgressView().controlSize(.small)
-            case .downloaded:
-                Label("On disk", systemImage: "externaldrive.fill.badge.checkmark")
-                    .foregroundStyle(.secondary)
-            case .notDownloaded, .failed:
+            } else {
                 Button("Download", action: onDownload)
             }
         }

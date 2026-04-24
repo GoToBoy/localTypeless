@@ -18,6 +18,8 @@ final class AppSettings {
     init(storage: SettingsStorage = UserDefaultsSettingsStorage()) {
         self.storage = storage
         self._hotkeyBinding = Self.loadBinding(storage: storage) ?? .default
+        self._hotkeyMode = HotkeyMode(
+            rawValue: storage.string(forKey: "hotkeyMode") ?? "") ?? .toggle
         self._asrLanguageMode = ASRLanguageMode(
             rawValue: storage.string(forKey: "asrLanguageMode") ?? "") ?? .auto
         self._uiLanguageMode = UILanguageMode(
@@ -27,6 +29,11 @@ final class AppSettings {
         self._audioRetentionDays = storage.contains("audioRetentionDays")
             ? storage.integer(forKey: "audioRetentionDays") : 7
         self._launchAtLogin = storage.bool(forKey: "launchAtLogin")
+        self._pasteMethod = PasteMethod(
+            rawValue: storage.string(forKey: "pasteMethod") ?? "") ?? .cgEvent
+        self._preserveClipboard = storage.contains("preserveClipboard")
+            ? storage.bool(forKey: "preserveClipboard") : true
+        self._pauseMediaDuringRecording = storage.bool(forKey: "pauseMediaDuringRecording")
     }
 
     // MARK: - Properties
@@ -40,6 +47,12 @@ final class AppSettings {
                 storage.set(data, forKey: "hotkeyBinding")
             }
         }
+    }
+
+    private var _hotkeyMode: HotkeyMode
+    var hotkeyMode: HotkeyMode {
+        get { _hotkeyMode }
+        set { _hotkeyMode = newValue; storage.set(newValue.rawValue, forKey: "hotkeyMode") }
     }
 
     private var _asrLanguageMode: ASRLanguageMode
@@ -76,6 +89,24 @@ final class AppSettings {
     var launchAtLogin: Bool {
         get { _launchAtLogin }
         set { _launchAtLogin = newValue; storage.set(newValue, forKey: "launchAtLogin") }
+    }
+
+    private var _pasteMethod: PasteMethod
+    var pasteMethod: PasteMethod {
+        get { _pasteMethod }
+        set { _pasteMethod = newValue; storage.set(newValue.rawValue, forKey: "pasteMethod") }
+    }
+
+    private var _preserveClipboard: Bool
+    var preserveClipboard: Bool {
+        get { _preserveClipboard }
+        set { _preserveClipboard = newValue; storage.set(newValue, forKey: "preserveClipboard") }
+    }
+
+    private var _pauseMediaDuringRecording: Bool
+    var pauseMediaDuringRecording: Bool {
+        get { _pauseMediaDuringRecording }
+        set { _pauseMediaDuringRecording = newValue; storage.set(newValue, forKey: "pauseMediaDuringRecording") }
     }
 
     func resetPolishPrompt() { polishPromptOverride = "" }

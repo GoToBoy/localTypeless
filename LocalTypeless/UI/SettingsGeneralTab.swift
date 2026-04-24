@@ -8,6 +8,7 @@ struct SettingsGeneralTab: View {
             Section("Hotkey") {
                 hotkeyRow
                 modifierOnlyRow
+                hotkeyModeRow
             }
 
             Section("Speech") {
@@ -36,15 +37,31 @@ struct SettingsGeneralTab: View {
     }
 
     @ViewBuilder
+    private var hotkeyModeRow: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Picker("Mode", selection: $settings.hotkeyMode) {
+                Text("Toggle (press to start, press to stop)").tag(HotkeyMode.toggle)
+                Text("Push-to-talk (hold to record)").tag(HotkeyMode.pushToTalk)
+            }
+            if settings.hotkeyMode == .pushToTalk
+                && !HotkeyMode.pushToTalk.isSupported(by: settings.hotkeyBinding) {
+                Text("Push-to-talk requires a modifier-only shortcut with the ‘Tap’ trigger; falling back to toggle.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    @ViewBuilder
     private var modifierOnlyRow: some View {
         HStack {
             Text("Modifier-only")
             Spacer()
-            // BUG-F01 fix: the former "(none)" option produced a HotkeyBinding
-            // with both keyCode == nil and modifierOnly == nil, which caused
-            // HotkeyManager to silently drop the binding with no user feedback.
-            // There is no valid "no-trigger" use case, so the option is removed.
             Picker("", selection: $settings.hotkeyBinding) {
+                Text("(none)").tag(HotkeyBinding(
+                    keyCode: settings.hotkeyBinding.keyCode,
+                    modifierMask: settings.hotkeyBinding.modifierMask,
+                    trigger: .press, modifierOnly: nil))
                 Text("Double-tap right ⌥").tag(HotkeyBinding(
                     keyCode: nil, modifierMask: [], trigger: .doubleTap, modifierOnly: .rightOption))
                 Text("Double-tap left ⌥").tag(HotkeyBinding(

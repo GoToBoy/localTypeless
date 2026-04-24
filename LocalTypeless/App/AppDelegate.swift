@@ -7,8 +7,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hotkeyManager: HotkeyManager!
     private var recorder: Recorder!
     private var audioBuffer: AudioBuffer!
-    private var audioLevelMeter: AudioLevelMeter!
-    private var recordingHUD: RecordingHUDController!
     private var stateMachine: StateMachine!
     private var asrService: ASRService!
     private var polishService: PolishService!
@@ -16,6 +14,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var historyStore: HistoryStore?
     private var audioStore: AudioStore?
     private var menuBarController: MenuBarController!
+    private var pipeline: DictationPipeline!
+    private var mediaController: MediaController!
 
     private var modelManager: (any ASRModelManaging)!
     private var mlxPolishManager: (any PolishModelManaging)!
@@ -32,38 +32,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var recordingStart: Date?
     private var focusedBundleId: String?
     private var focusedAppName: String?
-    private var didWarnAboutMissingRecordingHardware = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
 
-        ModelStorage.migrateLegacyCachesIfNeeded()
-
         audioBuffer = AudioBuffer(maxSeconds: 120, sampleRate: 16_000)
-        audioLevelMeter = AudioLevelMeter()
-        recorder = Recorder(buffer: audioBuffer, meter: audioLevelMeter)
+        recorder = Recorder(buffer: audioBuffer)
         stateMachine = StateMachine()
-        recordingHUD = RecordingHUDController(
-            stateMachine: stateMachine,
-            meter: audioLevelMeter
-        )
         modelStatusStore = ModelStatusStore()
         modelManager = WhisperKitModelManager(store: modelStatusStore)
         mlxPolishManager = MLXPolishModelManager(store: modelStatusStore)
-
-        // Recognize models the user already has on disk from a prior launch,
-        // and warm them into RAM in the background so the first hotkey press
-        // doesn't surface the download window.
-        probeAndPreloadExistingModels()
         asrService = WhisperKitASRService(manager: modelManager)
         polishService = MLXPolishService(manager: mlxPolishManager)
         textInjector = TextInjector()
+        mediaController = MediaController()
         historyStore = Self.makeHistoryStore()
         if historyStore == nil {
             let alert = NSAlert()
-            // BUG-L04 fix: wrap in String(localized:) so zh-Hans translations apply.
-            alert.messageText = String(localized: "Could not open history database")
-            alert.informativeText = String(localized: "Dictation will still work, but transcripts won't be saved to history.")
+            alert.messageText = "Could not open history database"
+            alert.informativeText = "Dictation will still work, but transcripts won't be saved to history."
             alert.alertStyle = .warning
             alert.runModal()
         }
@@ -80,8 +67,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settings = AppSettings()
         AppSettings.applyUILanguagePreference(settings.uiLanguageMode)
         hotkeyManager = HotkeyManager()
-        let binding = settings.hotkeyBinding
-        hotkeyManager.install(binding: binding) { [weak self] in self?.handleToggle() }
+        applyInjectorOptions()
+        installHotkey()
         startObservingSettings()
         LaunchAtLogin.applySilently(settings.launchAtLogin)
 
@@ -90,8 +77,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             try? audioStore?.pruneOlderThan(days: settings.audioRetentionDays)
         }
 
+        pipeline = DictationPipeline(.init(
+            asr: asrService,
+            polish: polishService,
+            injector: textInjector,
+            historyStore: historyStore,
+            audioStore: audioStore
+        ))
+
         permissionChecker = PermissionChecker()
-        validateRecordingHardwareAtLaunch()
         firstRunState = FirstRunState()
         if !firstRunState.onboardingCompleted {
             openOnboarding()
@@ -105,9 +99,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func startObservingSettings() {
         withObservationTracking {
             _ = settings.hotkeyBinding
+            _ = settings.hotkeyMode
             _ = settings.asrLanguageMode
             _ = settings.launchAtLogin
             _ = settings.uiLanguageMode
+            _ = settings.pasteMethod
+            _ = settings.preserveClipboard
         } onChange: { [weak self] in
             Task { @MainActor in
                 guard let self else { return }
@@ -118,9 +115,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func applySettingsChange() {
-        hotkeyManager.install(binding: settings.hotkeyBinding) { [weak self] in
-            self?.handleToggle()
-        }
+        installHotkey()
         if let whisperService = asrService as? WhisperKitASRService {
             whisperService.setOptions(ASROptions(forcedLanguage: {
                 switch settings.asrLanguageMode {
@@ -130,270 +125,126 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }()))
         }
+        applyInjectorOptions()
         LaunchAtLogin.applySilently(settings.launchAtLogin)
         startObservingSettings()  // re-register
     }
 
+    private func installHotkey() {
+        hotkeyManager.install(
+            binding: settings.hotkeyBinding,
+            mode: settings.hotkeyMode,
+            onPress: { [weak self] in self?.handleHotkeyPress() },
+            onRelease: { [weak self] in self?.handleHotkeyRelease() }
+        )
+    }
+
+    private func applyInjectorOptions() {
+        textInjector.options = TextInjector.Options(
+            pasteMethod: settings.pasteMethod,
+            preserveClipboard: settings.preserveClipboard
+        )
+    }
+
     // MARK: - End-to-end loop
 
-    private func handleToggle() {
-        // Gate on model readiness before starting any dictation.
-        //
-        // Three buckets, distinct UX:
-        //   - .resident: proceed.
-        //   - .notDownloaded / .failed: genuinely missing — open the
-        //     download window so the user can fetch it.
-        //   - .downloaded / .loading / .downloading: the bits are either on
-        //     disk or on the way; opening the download window here is
-        //     confusing ("why is it asking me to download something I
-        //     already have?"). Kick the load task (idempotent on the
-        //     manager actor) and tell the user to wait instead.
-        for kind in [ModelKind.asrWhisperLargeV3Turbo, .polishQwen25_3bInstruct4bit] {
-            switch modelStatusStore.status(for: kind) {
-            case .resident:
-                continue
-            case .notDownloaded, .failed:
-                openModelDownload(kind: kind)
-                return
-            case .downloaded, .loading, .downloading:
-                ensureModelLoadInFlight(kind: kind)
-                notifyModelStillLoading(kind: kind)
-                return
-            }
+    /// Guard that the ASR + polish models are loaded before we start anything.
+    /// Returns `true` when both are ready; otherwise opens the relevant
+    /// download window and returns `false`.
+    private func ensureModelsReady() -> Bool {
+        if !modelStatusStore.isReady(.asrWhisperLargeV3Turbo) {
+            openModelDownload(kind: .asrWhisperLargeV3Turbo); return false
         }
+        if !modelStatusStore.isReady(.polishQwen25_3bInstruct4bit) {
+            openModelDownload(kind: .polishQwen25_3bInstruct4bit); return false
+        }
+        return true
+    }
 
-        switch stateMachine.state {
-        case .idle:
-            guard ensureRecordingHardwareAvailable() else { return }
-            captureFocusedApp()
-            do {
-                try recorder.start()
-                recordingStart = Date()
-                stateMachine.toggle()
-            } catch Recorder.RecorderError.inputDeviceNotReady {
-                // The HAL was momentarily unable to resolve the default
-                // input device (common right at launch before AudioEngine
-                // warms up). Recorder already unwound its tap, so we can
-                // stay in `.idle` and let the user press again instead of
-                // parking in the `.error` state, which would force them
-                // to press twice more (once to clear .error, once to
-                // retry). Soft alert — not a fatal banner.
-                Log.recorder.error("input device not ready at hotkey press")
-                notifyMicrophoneNotReady()
-            } catch Recorder.RecorderError.installTapFailed {
-                // AVAudioEngine raised an NSException from installTap
-                // (caught by SafeAudioTap). We're alive, the tap is
-                // unwound, but we don't actually know which underlying
-                // cause hit us — surface a generic retry prompt.
-                Log.recorder.error("installTap threw NSException at hotkey press")
-                notifyMicrophoneNotReady()
-            } catch {
-                Log.recorder.error("start failed: \(String(describing: error), privacy: .public)")
-                stateMachine.fail(message: "Recording failed")
-            }
+    private func handleHotkeyPress() {
+        guard ensureModelsReady() else { return }
 
-        case .recording:
-            recorder.stop()
-            stateMachine.toggle()  // recording -> transcribing
-            Task { await runPipeline() }
-
-        case .error:
-            // BUG-U01 fix: previously the error branch only cleared to .idle,
-            // requiring a second hotkey press to start recording.  Users had no
-            // visual feedback that the first press was received (HUD is hidden
-            // in both .error and .idle states), so the app appeared unresponsive.
-            // We now clear the error and immediately attempt to start recording
-            // in one press, matching user expectation ("press = start talking").
-            stateMachine.toggle()  // error -> idle
-            guard ensureRecordingHardwareAvailable() else { return }
-            captureFocusedApp()
-            do {
-                try recorder.start()
-                recordingStart = Date()
-                stateMachine.toggle()  // idle -> recording
-            } catch Recorder.RecorderError.inputDeviceNotReady {
-                Log.recorder.error("input device not ready (error recovery path)")
-                notifyMicrophoneNotReady()
-            } catch Recorder.RecorderError.installTapFailed {
-                Log.recorder.error("installTap failed (error recovery path)")
-                notifyMicrophoneNotReady()
-            } catch {
-                Log.recorder.error("start failed (error recovery): \(String(describing: error), privacy: .public)")
-                stateMachine.fail(message: "Recording failed")
-            }
-
+        switch (settings.hotkeyMode.effective(for: settings.hotkeyBinding), stateMachine.state) {
+        case (.toggle, .idle), (.pushToTalk, .idle):
+            startRecording()
+        case (.toggle, .recording):
+            stopRecordingAndRunPipeline()
+        case (.toggle, .error), (.pushToTalk, .error):
+            stateMachine.toggle()  // -> idle
         default:
             break
         }
     }
 
+    private func handleHotkeyRelease() {
+        guard settings.hotkeyMode.effective(for: settings.hotkeyBinding) == .pushToTalk else { return }
+        guard stateMachine.state == .recording else { return }
+        stopRecordingAndRunPipeline()
+    }
+
+    private func startRecording() {
+        captureFocusedApp()
+        do {
+            try recorder.start()
+            recordingStart = Date()
+            stateMachine.toggle()  // idle -> recording
+            if settings.pauseMediaDuringRecording {
+                Task { [mediaController] in await mediaController?.pauseIfPlaying() }
+            }
+        } catch {
+            Log.recorder.error("start failed: \(String(describing: error), privacy: .public)")
+            stateMachine.fail(message: "Recording failed")
+        }
+    }
+
+    private func stopRecordingAndRunPipeline() {
+        recorder.stop()
+        stateMachine.toggle()  // recording -> transcribing
+        if settings.pauseMediaDuringRecording {
+            mediaController.resumeIfPaused()
+        }
+        Task { await runPipeline() }
+    }
+
     private func runPipeline() async {
         let startedAt = recordingStart ?? Date()
-        let durationMs = Int(Date().timeIntervalSince(startedAt) * 1_000)
-
-        let transcript: Transcript
-        do {
-            transcript = try await withTimeout(60) { [asrService, audioBuffer] in
-                try await asrService.transcribe(audioBuffer)
-            }
-        } catch PipelineTimeoutError.timedOut {
-            stateMachine.fail(message: "Transcription timed out")
-            return
-        } catch {
-            stateMachine.fail(message: "ASR failed")
-            return
-        }
-
-        if settings.audioRetentionEnabled, let store = audioStore {
-            do {
-                let samples = audioBuffer.snapshot()
-                try store.save(samples: samples, sampleRate: 16_000)
-                try store.pruneOlderThan(days: settings.audioRetentionDays)
-            } catch {
-                Log.state.error("audio save failed: \(String(describing: error), privacy: .public)")
-            }
-        }
-
-        stateMachine.advance()  // transcribing -> polishing
-
-        let promptOverride = settings.polishPromptOverride
-        let polished: String
-        do {
-            polished = try await withTimeout(30) { [polishService] in
-                try await polishService.polish(transcript, prompt: promptOverride)
-            }
-        } catch {
-            Log.polish.error("polish failed — using raw transcript")
-            polished = transcript.text
-        }
-
-        stateMachine.advance()  // polishing -> injecting
-
-        // BUG-F03 defence: if both ASR and the polish fallback produced empty
-        // text, skip injection entirely.  TextInjector also guards against this,
-        // but an early exit here avoids an unnecessary state transition and
-        // prevents the "paste nothing + clear clipboard" side-effect.
-        if polished.isEmpty {
-            Log.injector.info("empty result — skipping injection")
-        } else {
-            do {
-                try await textInjector.inject(polished)
-            } catch TextInjector.InjectionError.accessibilityDenied {
-                Log.injector.warning("accessibility denied; polished text left on pasteboard")
-            } catch {
-                Log.injector.error("injection failed: \(String(describing: error), privacy: .public)")
-            }
-        }
-
-        let entry = DictationEntry(
+        let input = DictationPipeline.Input(
+            audioBuffer: audioBuffer,
             startedAt: startedAt,
-            durationMs: durationMs,
-            rawTranscript: transcript.text,
-            polishedText: polished,
-            language: transcript.language,
             targetAppBundleId: focusedBundleId,
-            targetAppName: focusedAppName
+            targetAppName: focusedAppName,
+            polishPrompt: settings.polishPromptOverride,
+            transcribeTimeout: 60,
+            polishTimeout: 30,
+            saveAudio: settings.audioRetentionEnabled,
+            audioRetentionDays: settings.audioRetentionDays
         )
-        if let store = historyStore { try? store.insert(entry) }
+        await pipeline.run(input) { [weak self] event in
+            self?.handlePipelineEvent(event)
+        }
+    }
 
-        stateMachine.advance()  // injecting -> idle
+    private func handlePipelineEvent(_ event: DictationPipeline.Event) {
+        switch event {
+        case .transcribing:
+            // StateMachine already moved to `.transcribing` when the hotkey
+            // stopped recording; nothing to do.
+            break
+        case .polishing:
+            stateMachine.advance()   // transcribing -> polishing
+        case .injecting:
+            stateMachine.advance()   // polishing -> injecting
+        case .done:
+            stateMachine.advance()   // injecting -> idle
+        case .failed(let message):
+            stateMachine.fail(message: message)
+        }
     }
 
     private func captureFocusedApp() {
         let app = NSWorkspace.shared.frontmostApplication
         focusedBundleId = app?.bundleIdentifier
         focusedAppName = app?.localizedName
-    }
-
-    private func probeAndPreloadExistingModels() {
-        for kind in ModelKind.allCases where ModelStorage.isDownloaded(kind) {
-            modelStatusStore.set(.downloaded, for: kind)
-        }
-        for kind in ModelKind.allCases where modelStatusStore.status(for: kind) == .downloaded {
-            ensureModelLoadInFlight(kind: kind)
-        }
-    }
-
-    /// Kick the manager's `ensureReady` task for `kind` without blocking.
-    ///
-    /// Idempotent in practice: `ensureReady` is actor-isolated inside the
-    /// manager, so calling it again while a prior load is in flight just
-    /// queues a second call that returns immediately once the model is
-    /// resident. Used both by the launch-time probe and by the hotkey gate
-    /// when the user presses the shortcut while the warm-up is still in
-    /// progress — we want to surface "loading" status, not offer download.
-    private func ensureModelLoadInFlight(kind: ModelKind) {
-        let manager: any ModelLifecycle
-        switch kind {
-        case .asrWhisperLargeV3Turbo:      manager = modelManager
-        case .polishQwen25_3bInstruct4bit: manager = mlxPolishManager
-        }
-        Task {
-            do {
-                try await manager.ensureReady(kind)
-            } catch {
-                Log.state.error("background load failed (\(kind.rawValue, privacy: .public)): \(String(describing: error), privacy: .public)")
-            }
-        }
-    }
-
-    private func validateRecordingHardwareAtLaunch() {
-        guard !Recorder.hasUsableRecordingHardware() else { return }
-        notifyMissingRecordingHardware()
-    }
-
-    private func ensureRecordingHardwareAvailable() -> Bool {
-        guard !Recorder.hasUsableRecordingHardware() else { return true }
-        notifyMissingRecordingHardware()
-        return false
-    }
-
-    private func notifyMissingRecordingHardware() {
-        let alert = NSAlert()
-        alert.messageText = "No recording device detected"
-        alert.informativeText = "local-typeless could not find a usable audio input device on this Mac. Connect a microphone, or choose an input device in System Settings > Sound > Input, before starting dictation."
-        alert.addButton(withTitle: "OK")
-        if didWarnAboutMissingRecordingHardware {
-            Log.recorder.error("recording hardware missing")
-            return
-        }
-        didWarnAboutMissingRecordingHardware = true
-        alert.runModal()
-        Log.recorder.error("recording hardware missing")
-    }
-
-    /// Soft alert for the "HAL hasn't resolved the default input yet" race.
-    /// Distinct from permission denial — the mic permission is fine; the
-    /// OS just isn't ready to hand us a device yet. Usually clears within
-    /// a second or two.
-    private func notifyMicrophoneNotReady() {
-        let alert = NSAlert()
-        alert.messageText = String(localized: "Microphone not ready")
-        alert.informativeText = String(
-            localized: "macOS was still resolving the default input device. Try the hotkey again in a moment."
-        )
-        alert.addButton(withTitle: String(localized: "OK"))
-        alert.runModal()
-    }
-
-    /// Surface a brief "still loading" notice when the user triggers the
-    /// hotkey while a model is mid-load. Avoids the jarring download-window
-    /// pop-up for a model that's visibly on its way.
-    private func notifyModelStillLoading(kind: ModelKind) {
-        // Kind-specific messages — no string interpolation — so xcstrings can
-        // translate the full sentence per locale without %@ substitution.
-        let body: String
-        switch kind {
-        case .asrWhisperLargeV3Turbo:
-            body = String(localized: "The speech model is still loading into memory. Please try the hotkey again in a few seconds.")
-        case .polishQwen25_3bInstruct4bit:
-            body = String(localized: "The polish model is still loading into memory. Please try the hotkey again in a few seconds.")
-        }
-        let alert = NSAlert()
-        alert.messageText = String(localized: "Loading model…")
-        alert.informativeText = body
-        alert.addButton(withTitle: String(localized: "OK"))
-        alert.runModal()
     }
 
     private func unloadModels() {
@@ -426,7 +277,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         let w = NSWindow(contentViewController: host)
-        w.title = String(localized: "Model Setup") // BUG-L04 fix
+        w.title = "Model Setup"
         w.styleMask = [.titled, .closable]
         w.center()
         w.isReleasedWhenClosed = false
@@ -439,12 +290,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Task {
             do {
                 try await manager.ensureReady(kind)
-                // BUG-U02 fix: once the model reaches .resident the download window
-                // is no longer useful — auto-close it so the user isn't left with a
-                // stale "Ready / Done" window blocking their workflow.
-                await MainActor.run {
-                    modelDownloadWindow?.close()
-                }
             } catch {
                 Log.state.error("model download failed (\(kind.rawValue, privacy: .public)): \(String(describing: error), privacy: .public)")
             }
@@ -487,7 +332,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         let host = NSHostingController(rootView: view)
         let w = NSWindow(contentViewController: host)
-        w.title = String(localized: "Settings") // BUG-L04 fix
+        w.title = "Settings"
         w.styleMask = [.titled, .closable]
         w.center()
         w.isReleasedWhenClosed = false
@@ -497,27 +342,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func openHistory() {
+        if let w = historyWindow { w.makeKeyAndOrderFront(nil); NSApp.activate(); return }
         guard let historyStore else { return }
-        let freshView = HistoryView(store: historyStore, onReInject: { [weak self] text in
-            Task { @MainActor in
-                guard let self, !text.isEmpty else { return }
-                try? await self.textInjector.inject(text)
-            }
-        })
-        if let w = historyWindow {
-            // BUG-F02 fix: replace the content view controller so SwiftUI
-            // rebuilds the view from scratch and re-fires .task { reload() }.
-            // Simply calling makeKeyAndOrderFront on the existing window would
-            // reuse the old NSHostingController whose .task fires only once,
-            // meaning new dictations are invisible until the app restarts.
-            w.contentViewController = NSHostingController(rootView: freshView)
-            w.makeKeyAndOrderFront(nil)
-            NSApp.activate()
-            return
-        }
-        let host = NSHostingController(rootView: freshView)
+        let host = NSHostingController(rootView: HistoryView(store: historyStore))
         let w = NSWindow(contentViewController: host)
-        w.title = String(localized: "History")
+        w.title = "History"
         w.styleMask = [.titled, .closable, .resizable]
         w.center()
         w.isReleasedWhenClosed = false

@@ -59,20 +59,10 @@ final class SQLiteHistoryStore: HistoryStore {
 
     func search(query: String) throws -> [DictationEntry] {
         try dbQueue.read { db in
-            // BUG-F06 fix: escape SQL LIKE wildcard characters so user input is
-            // treated as a literal substring, not a pattern.
-            //   %  →  \%   (would otherwise match any sequence)
-            //   _  →  \_   (would otherwise match any single character)
-            //   \  →  \\   (escape character itself must be escaped first)
-            let escaped = query
-                .replacingOccurrences(of: "\\", with: "\\\\")
-                .replacingOccurrences(of: "%",  with: "\\%")
-                .replacingOccurrences(of: "_",  with: "\\_")
-            let like = "%\(escaped)%"
+            let like = "%\(query)%"
             return try Row.fetchAll(db, sql: """
                 SELECT * FROM dictation
-                WHERE raw_transcript LIKE ? ESCAPE '\\'
-                   OR polished_text  LIKE ? ESCAPE '\\'
+                WHERE raw_transcript LIKE ? OR polished_text LIKE ?
                 ORDER BY started_at DESC
             """, arguments: [like, like]).map(Self.decode)
         }

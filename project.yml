@@ -21,9 +21,6 @@ packages:
   MLXSwiftExamples:
     url: https://github.com/ml-explore/mlx-swift-examples
     from: 2.25.0
-  ViewInspector:
-    url: https://github.com/nalexn/ViewInspector
-    from: 0.10.0
 targets:
   LocalTypeless:
     type: application
@@ -32,10 +29,6 @@ targets:
       - path: LocalTypeless
     resources:
       - LocalTypeless/Resources
-    settings:
-      base:
-        SWIFT_OBJC_BRIDGING_HEADER: LocalTypeless/Support/LocalTypeless-Bridging-Header.h
-        CLANG_ENABLE_OBJC_ARC: YES
     info:
       path: LocalTypeless/Resources/Info.plist
       properties:
@@ -45,9 +38,6 @@ targets:
         CFBundleDisplayName: local-typeless
         CFBundleShortVersionString: "0.1.0"
         CFBundleVersion: "1"
-        CFBundleLocalizations:
-          - en
-          - zh-Hans
     entitlements:
       path: LocalTypeless/Resources/LocalTypeless.entitlements
       properties:
@@ -70,10 +60,8 @@ targets:
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
-        SWIFT_OBJC_BRIDGING_HEADER: LocalTypeless/Support/LocalTypeless-Bridging-Header.h
     dependencies:
       - target: LocalTypeless
-      - package: ViewInspector
 schemes:
   LocalTypeless:
     build:

@@ -6,18 +6,14 @@ struct ModelDownloadView: View {
     let onStart: () -> Void
     let onCancel: () -> Void
 
-    // BUG-L01 fix: use LocalizedStringKey so Text(title) / Text(subtitle) resolve
-    // to Text(_ key: LocalizedStringKey) and look up the xcstrings catalog.
-    // Returning a plain String would select Text(_ content: String) which skips
-    // localization even when the literal exists in the catalog.
-    private var title: LocalizedStringKey {
+    private var title: String {
         switch kind {
         case .asrWhisperLargeV3Turbo:       return "Download speech model"
         case .polishQwen25_3bInstruct4bit:   return "Download polish model"
         }
     }
 
-    private var subtitle: LocalizedStringKey {
+    private var subtitle: String {
         switch kind {
         case .asrWhisperLargeV3Turbo:       return "~1.5 GB · offline after download"
         case .polishQwen25_3bInstruct4bit:   return "~2 GB · offline after download"

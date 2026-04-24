@@ -1,5 +1,4 @@
 import Foundation
-import Hub
 import MLXLLM
 import MLXLMCommon
 
@@ -39,11 +38,8 @@ actor MLXPolishModelManager: PolishModelManaging {
         await MainActor.run { store.set(.loading, for: kind) }
         do {
             let config = ModelConfiguration(id: modelId)
-            // Pin downloads under Application Support so rebuilds/cache purges don't wipe weights.
-            let hub = HubApi(downloadBase: ModelStorage.root)
-            let c = try await LLMModelFactory.shared.loadContainer(
-                hub: hub, configuration: config
-            )
+            // hub: and progressHandler: both have defaults in 2.25.7 — only configuration: is required.
+            let c = try await LLMModelFactory.shared.loadContainer(configuration: config)
             self.container = c
             await MainActor.run { store.set(.resident, for: kind) }
         } catch {

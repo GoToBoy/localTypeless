@@ -5,9 +5,13 @@ import Carbon.HIToolbox
 @MainActor
 final class HotkeyManager {
 
-    typealias ToggleHandler = () -> Void
+    typealias Handler = () -> Void
 
-    private var onToggle: ToggleHandler?
+    private var onPress: Handler?
+    private var onRelease: Handler?
+    private var activeMode: HotkeyMode = .toggle
+    private var modifierHeld = false
+
     private var carbonHotKeyRef: EventHotKeyRef?
     private var carbonHandlerRef: EventHandlerRef?
     private var eventTap: CFMachPort?
@@ -28,22 +32,34 @@ final class HotkeyManager {
         }
     }
 
-    func install(binding: HotkeyBinding, onToggle: @escaping ToggleHandler) {
+    /// Install a hotkey.
+    ///
+    /// - Parameters:
+    ///   - binding: which key / modifier combination to listen for.
+    ///   - mode: how a press maps to record start/stop. Falls back to `.toggle`
+    ///     when the binding can't express a release (see `HotkeyMode`).
+    ///   - onPress: fired on press (toggle) or press-down (push-to-talk).
+    ///   - onRelease: fired on release in push-to-talk mode; never fired in
+    ///     toggle mode.
+    func install(
+        binding: HotkeyBinding,
+        mode: HotkeyMode,
+        onPress: @escaping Handler,
+        onRelease: @escaping Handler
+    ) {
         tearDown()
-        self.onToggle = onToggle
+        self.onPress = onPress
+        self.onRelease = onRelease
+        self.activeMode = mode.effective(for: binding)
         self.currentBinding = binding
+        self.modifierHeld = false
 
         if binding.modifierOnly != nil {
             installEventTap(for: binding)
         } else if let keyCode = binding.keyCode {
             installCarbonHotkey(keyCode: keyCode, modifierMask: binding.modifierMask)
         } else {
-            // BUG-F01: a binding with keyCode == nil AND modifierOnly == nil is
-            // invalid — no hotkey will be registered.  This branch should be
-            // unreachable after the Settings UI fix removed the "(none)" option,
-            // but we assert here as a safety net for future callers.
-            assertionFailure("HotkeyBinding has neither keyCode nor modifierOnly — hotkey will not fire")
-            Log.hotkey.error("binding has neither keyCode nor modifierOnly — hotkey disabled")
+            Log.hotkey.error("binding has neither keyCode nor modifierOnly")
         }
     }
 
@@ -65,6 +81,7 @@ final class HotkeyManager {
             runLoopSource = nil
         }
         currentBinding = nil
+        modifierHeld = false
     }
 
     // MARK: - Carbon path (key + modifier)
@@ -83,7 +100,8 @@ final class HotkeyManager {
                               EventParamType(typeEventHotKeyID), nil,
                               MemoryLayout<EventHotKeyID>.size, nil, &hkID)
             DispatchQueue.main.async {
-                HotkeyManager.sharedInstance?.onToggle?()
+                // Carbon hot-keys only report "pressed"; treat as a toggle press.
+                HotkeyManager.sharedInstance?.onPress?()
             }
             return noErr
         } as EventHandlerUPP, 1, &eventType, nil, &carbonHandlerRef)
@@ -138,29 +156,39 @@ final class HotkeyManager {
         let eventKeyCode = CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode))
         guard eventKeyCode == targetKeyCode else { return }
 
+        let active = isModifierActive(for: target, flags: event.flags)
         let now = CFAbsoluteTimeGetCurrent()
+
         switch binding.trigger {
         case .press:
-            if isModifierActive(for: target, flags: event.flags) {
-                onToggle?()
+            if activeMode == .pushToTalk {
+                if active && !modifierHeld {
+                    modifierHeld = true
+                    onPress?()
+                } else if !active && modifierHeld {
+                    modifierHeld = false
+                    onRelease?()
+                }
+            } else if active {
+                onPress?()
             }
+
         case .doubleTap:
-            if !isModifierActive(for: target, flags: event.flags) {
-                return
-            }
+            if !active { return }
             if let last = lastModifierPress, last.key == target, now - last.time < 0.3 {
                 lastModifierPress = nil
-                onToggle?()
+                onPress?()
             } else {
                 lastModifierPress = (target, now)
             }
+
         case .longPress:
-            if isModifierActive(for: target, flags: event.flags) {
+            if active {
                 lastModifierPress = (target, now)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
                     guard let self, let last = self.lastModifierPress, last.key == target else { return }
                     if CFAbsoluteTimeGetCurrent() - last.time >= 0.5 {
-                        self.onToggle?()
+                        self.onPress?()
                         self.lastModifierPress = nil
                     }
                 }
