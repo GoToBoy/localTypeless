@@ -1,0 +1,33 @@
+// Syncthing ignore rules for local-only build artifacts, caches, and editor state.
+
+// VCS metadata
+(?d)/.git
+
+// macOS and editor metadata
+(?d)**/.DS_Store
+(?d)/.idea
+(?d)/.vscode
+(?d)**/*.swp
+(?d)**/*~
+
+// Xcode build outputs and user state
+(?d)/build
+(?d)/DerivedData
+(?d)/LocalTypeless.xcodeproj/project.xcworkspace/xcuserdata
+(?d)/LocalTypeless.xcodeproj/xcuserdata
+(?d)**/*.xcuserdatad
+(?d)**/*.xcuserstate
+(?d)**/*.pbxuser
+(?d)**/*.mode1v3
+(?d)**/*.mode2v3
+(?d)**/*.perspectivev3
+
+// Swift Package Manager caches
+(?d)/.build
+(?d)/Packages
+(?d)/.swiftpm
+
+// Downloaded model artifacts and caches
+(?d)**/*.mlpackage
+(?d)**/*.mlmodelc
+(?d)/Models-Cache

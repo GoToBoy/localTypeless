@@ -1,0 +1,33 @@
+# macOS
+.DS_Store
+
+# Xcode build outputs
+/build/
+/DerivedData/
+
+# Xcode user-specific files
+xcuserdata/
+*.xcuserdatad/
+*.xcuserstate
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+
+# Swift Package Manager caches
+/.build/
+/Packages/
+/.swiftpm/
+
+# Editor settings
+/.vscode/
+/.idea/
+
+# Syncthing local marker
+/.stfolder/
+
+# Downloaded model artifacts (large binaries). Swift source under
+# LocalTypeless/Services/Models/ is tracked.
+**/*.mlpackage
+**/*.mlmodelc
+/Models-Cache/
