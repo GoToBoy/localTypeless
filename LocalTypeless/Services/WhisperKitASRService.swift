@@ -73,7 +73,11 @@ final class WhisperKitASRService: ASRService, @unchecked Sendable {
             )
             let first = results.first
             let text = first?.text.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            let lang = first?.language ?? opts.forcedLanguage ?? "en"
+            let lang = TranscriptLanguage.normalized(
+                reported: first?.language,
+                fallback: opts.forcedLanguage,
+                text: text
+            )
             let segs: [Transcript.Segment] = (first?.segments ?? []).map {
                 Transcript.Segment(
                     text: $0.text,

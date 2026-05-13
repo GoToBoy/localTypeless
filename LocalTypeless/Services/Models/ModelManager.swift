@@ -3,6 +3,10 @@ import WhisperKit
 
 /// Shared lifecycle operations every model manager must implement.
 protocol ModelLifecycle: Actor {
+    /// Ensure the given model files are present on disk. This must not load the
+    /// model into RAM.
+    func ensureDownloaded(_ kind: ModelKind) async throws
+
     /// Ensure the given model is downloaded AND loaded in RAM.
     /// Publishes progress via the injected store.
     func ensureReady(_ kind: ModelKind) async throws

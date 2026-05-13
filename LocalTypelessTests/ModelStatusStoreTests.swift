@@ -31,4 +31,13 @@ final class ModelStatusStoreTests: XCTestCase {
         store.set(.downloaded, for: .asrWhisperLargeV3Turbo)
         XCTAssertFalse(store.isReady(.asrWhisperLargeV3Turbo))
     }
+
+    func test_downloaded_can_load_on_demand() {
+        let store = ModelStatusStore()
+        XCTAssertFalse(store.canLoadOnDemand(.asrWhisperLargeV3Turbo))
+        store.set(.downloaded, for: .asrWhisperLargeV3Turbo)
+        XCTAssertTrue(store.canLoadOnDemand(.asrWhisperLargeV3Turbo))
+        store.set(.resident, for: .asrWhisperLargeV3Turbo)
+        XCTAssertTrue(store.canLoadOnDemand(.asrWhisperLargeV3Turbo))
+    }
 }

@@ -44,6 +44,28 @@ final class StateMachineTests: XCTestCase {
         XCTAssertEqual(sm.state, .idle)
     }
 
+    func test_startInjectingCanSkipPolishing() {
+        let sm = StateMachine()
+        sm.toggle(); sm.toggle()
+        sm.startInjecting()
+        XCTAssertEqual(sm.state, .injecting)
+    }
+
+    func test_finishFromInjectingReturnsToIdle() {
+        let sm = StateMachine()
+        sm.toggle(); sm.toggle()
+        sm.startInjecting()
+        sm.finish()
+        XCTAssertEqual(sm.state, .idle)
+    }
+
+    func test_cancelRecordingReturnsToIdle() {
+        let sm = StateMachine()
+        sm.toggle()
+        sm.cancelRecording()
+        XCTAssertEqual(sm.state, .idle)
+    }
+
     func test_failMovesToErrorFromAnyProcessingState() {
         let sm = StateMachine()
         sm.toggle(); sm.toggle()

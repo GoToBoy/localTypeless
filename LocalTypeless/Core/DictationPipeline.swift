@@ -20,8 +20,10 @@ final class DictationPipeline {
     struct Input {
         let audioBuffer: AudioBuffer
         let startedAt: Date
+        let targetAppProcessIdentifier: pid_t?
         let targetAppBundleId: String?
         let targetAppName: String?
+        let polishEnabled: Bool
         let polishPrompt: String
         let transcribeTimeout: TimeInterval
         let polishTimeout: TimeInterval
@@ -33,6 +35,7 @@ final class DictationPipeline {
         case transcribing
         case polishing
         case injecting
+        case copyFallback(String, TextInjector.InjectionError)
         case done(DictationEntry)
         case failed(String)
     }
@@ -79,24 +82,37 @@ final class DictationPipeline {
             }
         }
 
-        onEvent(.polishing)
         let polished: String
-        do {
-            polished = try await withTimeout(input.polishTimeout) {
-                try await polish.polish(transcript, prompt: polishPrompt)
+        if input.polishEnabled {
+            onEvent(.polishing)
+            do {
+                let generated = try await withTimeout(input.polishTimeout) {
+                    try await polish.polish(transcript, prompt: polishPrompt)
+                }
+                polished = TranscriptTextNormalizer.finalOutput(generated, transcript: transcript)
+            } catch {
+                Log.polish.error("polish failed — using raw transcript")
+                polished = TranscriptTextNormalizer.unpolishedOutput(for: transcript)
             }
-        } catch {
-            Log.polish.error("polish failed — using raw transcript")
-            polished = transcript.text
+        } else {
+            polished = TranscriptTextNormalizer.unpolishedOutput(for: transcript)
         }
 
         onEvent(.injecting)
         do {
-            try await deps.injector.inject(polished)
-        } catch TextInjector.InjectionError.accessibilityDenied {
-            Log.injector.warning("accessibility denied; polished text left on pasteboard")
+            try await deps.injector.inject(
+                polished,
+                target: .init(
+                    processIdentifier: input.targetAppProcessIdentifier,
+                    bundleIdentifier: input.targetAppBundleId
+                )
+            )
+        } catch let error as TextInjector.InjectionError {
+            logInjectionFallback(error)
+            onEvent(.copyFallback(polished, error))
         } catch {
             Log.injector.error("injection failed: \(String(describing: error), privacy: .public)")
+            onEvent(.copyFallback(polished, .pasteFailed(String(describing: error))))
         }
 
         let durationMs = Int(Date().timeIntervalSince(input.startedAt) * 1_000)
@@ -114,5 +130,20 @@ final class DictationPipeline {
         }
 
         onEvent(.done(entry))
+    }
+
+    private func logInjectionFallback(_ error: TextInjector.InjectionError) {
+        switch error {
+        case .accessibilityDenied:
+            Log.injector.warning("accessibility denied; polished text left on pasteboard")
+        case .noFocusedWindow:
+            Log.injector.warning("no focused window; polished text left on pasteboard")
+        case .eventCreationFailed:
+            Log.injector.error("failed to create paste keyboard events; polished text left on pasteboard")
+        case .appleScriptFailed(let message):
+            Log.injector.error("applescript injection failed: \(message, privacy: .public)")
+        case .pasteFailed(let message):
+            Log.injector.error("paste injection failed: \(message, privacy: .public)")
+        }
     }
 }

@@ -134,6 +134,42 @@
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已就绪" } }
       }
     },
+    "Listening…" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Listening…" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在听写…" } }
+      }
+    },
+    "Speak now" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Speak now" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "请说话" } }
+      }
+    },
+    "Turning speech into text" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Turning speech into text" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在转成文字" } }
+      }
+    },
+    "Improving punctuation and style" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Improving punctuation and style" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在优化标点和表达" } }
+      }
+    },
+    "Pasting into the focused app" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Pasting into the focused app" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在粘贴到聚焦应用" } }
+      }
+    },
+    "Dictation error" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Dictation error" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "听写出错" } }
+      }
+    },
     "Download" : {
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Download" } },
@@ -150,6 +186,60 @@
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Downloaded (not loaded)" } },
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已下载（未加载）" } }
+      }
+    },
+    "Downloaded" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Downloaded" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已下载" } }
+      }
+    },
+    "Downloaded (loads automatically)" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Downloaded (loads automatically)" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已下载（自动加载）" } }
+      }
+    },
+    "Polish" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Polish" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "润色" } }
+      }
+    },
+    "Automatic" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Automatic" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "自动" } }
+      }
+    },
+    "On" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "On" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "开启" } }
+      }
+    },
+    "Off" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Off" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "关闭" } }
+      }
+    },
+    "Disabled" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Disabled" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已关闭" } }
+      }
+    },
+    "Memory now: %@ available of %@." : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Memory now: %@ available of %@." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "当前内存：%@ 可用，共 %@。" } }
+      }
+    },
+    "Automatic skips polish when memory is tight." : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Automatic skips polish when memory is tight." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "自动模式会在内存紧张时跳过润色。" } }
       }
     },
     "Loading…" : {
@@ -236,6 +326,66 @@
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "下载润色模型" } }
       }
     },
+    "Speech model downloaded" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Speech model downloaded" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "语音模型已下载" } }
+      }
+    },
+    "Polish model downloaded" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Polish model downloaded" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "润色模型已下载" } }
+      }
+    },
+    "Load speech model" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Load speech model" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "加载语音模型" } }
+      }
+    },
+    "Load polish model" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Load polish model" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "加载润色模型" } }
+      }
+    },
+    "Downloading speech model" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Downloading speech model" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在下载语音模型" } }
+      }
+    },
+    "Downloading polish model" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Downloading polish model" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在下载润色模型" } }
+      }
+    },
+    "Loading speech model" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Loading speech model" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在加载语音模型" } }
+      }
+    },
+    "Loading polish model" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Loading polish model" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在加载润色模型" } }
+      }
+    },
+    "Speech model ready" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Speech model ready" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "语音模型已就绪" } }
+      }
+    },
+    "Polish model ready" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Polish model ready" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "润色模型已就绪" } }
+      }
+    },
     "~1.5 GB · offline after download" : {
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "~1.5 GB · offline after download" } },
@@ -246,6 +396,66 @@
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "~2 GB · offline after download" } },
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "~2 GB · 下载后可离线使用" } }
+      }
+    },
+    "Already downloaded · ready to load" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Already downloaded · ready to load" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已下载 · 可直接加载" } }
+      }
+    },
+    "Ready for dictation · loads automatically" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Ready for dictation · loads automatically" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "可开始听写 · 使用时自动加载" } }
+      }
+    },
+    "Using raw transcript" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Using raw transcript" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在使用原始转写" } }
+      }
+    },
+    "OK" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "OK" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "好" } }
+      }
+    },
+    "Polish is enabled, but the polish model is not downloaded yet. Using the raw transcript." : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Polish is enabled, but the polish model is not downloaded yet. Using the raw transcript." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已开启润色，但润色模型尚未下载。本次将使用原始转写。" } }
+      }
+    },
+    "Polish was skipped to keep dictation responsive on this Mac. You can enable it from Settings if you prefer higher quality." : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Polish was skipped to keep dictation responsive on this Mac. You can enable it from Settings if you prefer higher quality." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "为了保持这台 Mac 上的听写响应速度，本次已跳过润色。如果你更重视质量，可以在设置中开启润色。" } }
+      }
+    },
+    "Polish was skipped because available memory is low (%@ available)." : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Polish was skipped because available memory is low (%@ available)." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "由于可用内存较低（%@ 可用），本次已跳过润色。" } }
+      }
+    },
+    "Polish was skipped automatically because available memory is low (%@ available)." : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Polish was skipped automatically because available memory is low (%@ available)." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "由于可用内存较低（%@ 可用），自动模式已跳过润色。" } }
+      }
+    },
+    "Loading from local disk" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Loading from local disk" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在从本地磁盘加载" } }
+      }
+    },
+    "Loaded into memory" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Loaded into memory" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已加载到内存" } }
       }
     },
     "Cancel" : {
@@ -320,10 +530,28 @@
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "润色模型" } }
       }
     },
+    "ASR model: %@" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "ASR model: %@" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "语音识别模型：%@" } }
+      }
+    },
+    "Polish model: %@" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Polish model: %@" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "润色模型：%@" } }
+      }
+    },
     "Download %@…" : {
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Download %@…" } },
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "下载 %@…" } }
+      }
+    },
+    "Load %@…" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Load %@…" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "加载 %@…" } }
       }
     },
     "Open History" : {
@@ -404,6 +632,12 @@
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已下载" } }
       }
     },
+    "ready on demand" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "ready on demand" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "需要时自动加载" } }
+      }
+    },
     "loading…" : {
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "loading…" } },
@@ -414,6 +648,36 @@
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "ready" } },
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已就绪" } }
+      }
+    },
+    "ready (in memory)" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "ready (in memory)" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已就绪（内存中）" } }
+      }
+    },
+    "off" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "off" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已关闭" } }
+      }
+    },
+    "not downloaded (optional)" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "not downloaded (optional)" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "未下载（可选）" } }
+      }
+    },
+    "auto skipped (low memory)" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "auto skipped (low memory)" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "自动跳过（内存不足）" } }
+      }
+    },
+    "skipped (low memory)" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "skipped (low memory)" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已跳过（内存不足）" } }
       }
     },
     "failed: %@" : {
@@ -642,6 +906,42 @@
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "If an app filters synthesized key events or your keyboard layout rewrites ⌘-layer keys, try the AppleScript method." } },
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "若目标应用过滤模拟键事件，或你的键盘布局会重映射 ⌘ 层按键，可切换到 AppleScript 方式。" } }
+      }
+    },
+    "Dictation text is ready" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Dictation text is ready" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "转写文字已就绪" } }
+      }
+    },
+    "Copy" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Copy" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "复制" } }
+      }
+    },
+    "Open Accessibility Settings" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open Accessibility Settings" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "打开辅助功能设置" } }
+      }
+    },
+    "local-typeless could not paste automatically because Accessibility permission is not enabled. The text is on the clipboard." : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "local-typeless could not paste automatically because Accessibility permission is not enabled. The text is on the clipboard." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "由于尚未开启辅助功能权限，local-typeless 无法自动粘贴。文字已放入剪贴板。" } }
+      }
+    },
+    "No focused window was available. The text is on the clipboard, ready to paste wherever you want." : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No focused window was available. The text is on the clipboard, ready to paste wherever you want." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "当前没有可用的聚焦窗口。文字已放入剪贴板，可粘贴到你想要的位置。" } }
+      }
+    },
+    "local-typeless could not paste automatically. The text is on the clipboard, ready to paste wherever you want." : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "local-typeless could not paste automatically. The text is on the clipboard, ready to paste wherever you want." } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "local-typeless 无法自动粘贴。文字已放入剪贴板，可粘贴到你想要的位置。" } }
       }
     },
     "Recording" : {

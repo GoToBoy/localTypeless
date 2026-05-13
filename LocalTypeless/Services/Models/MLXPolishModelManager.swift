@@ -1,4 +1,5 @@
 import Foundation
+import Hub
 import MLXLLM
 import MLXLMCommon
 
@@ -6,11 +7,37 @@ actor MLXPolishModelManager: PolishModelManaging {
 
     private let store: ModelStatusStore
     private var container: ModelContainer?
+    private var downloadInFlight: Task<Void, Error>?
     private var inFlight: Task<Void, Error>?
-    private let modelId = "mlx-community/Qwen2.5-3B-Instruct-4bit"
 
     init(store: ModelStatusStore) {
         self.store = store
+    }
+
+    func ensureDownloaded(_ kind: ModelKind) async throws {
+        guard kind == .polishQwen25_3bInstruct4bit else {
+            throw ModelManagerError.unsupportedKind(kind)
+        }
+        if container != nil {
+            await MainActor.run { store.set(.resident, for: kind) }
+            return
+        }
+        if ModelStorage.isDownloaded(kind) {
+            await MainActor.run { store.set(.downloaded, for: kind) }
+            return
+        }
+        if let existing = downloadInFlight {
+            try await existing.value
+            return
+        }
+
+        let task = Task<Void, Error> { [weak self] in
+            guard let self else { return }
+            try await self.download(kind: kind)
+        }
+        downloadInFlight = task
+        defer { downloadInFlight = nil }
+        try await task.value
     }
 
     func ensureReady(_ kind: ModelKind) async throws {
@@ -25,6 +52,9 @@ actor MLXPolishModelManager: PolishModelManaging {
             try await existing.value
             return
         }
+        if let existing = downloadInFlight {
+            try await existing.value
+        }
         let task = Task<Void, Error> { [weak self] in
             guard let self else { return }
             try await self.load(kind: kind)
@@ -34,12 +64,34 @@ actor MLXPolishModelManager: PolishModelManaging {
         try await task.value
     }
 
+    private func download(kind: ModelKind) async throws {
+        await MainActor.run { store.set(.downloading(progress: 0), for: kind) }
+        do {
+            let hub = HubApi(downloadBase: try ModelStorage.modelsDirectory())
+            let config = ModelConfiguration(id: ModelStorage.mlxPolishModelId)
+            _ = try await downloadModel(hub: hub, configuration: config) { _ in }
+            await MainActor.run { store.set(.downloaded, for: kind) }
+        } catch {
+            await MainActor.run {
+                store.set(.failed(message: error.localizedDescription), for: kind)
+            }
+            throw ModelManagerError.initializationFailed(error.localizedDescription)
+        }
+    }
+
     private func load(kind: ModelKind) async throws {
+        try await ensureDownloaded(kind)
+        guard let modelDirectory = ModelStorage.downloadedModelDirectory(kind) else {
+            throw ModelManagerError.initializationFailed("Model files are not downloaded")
+        }
         await MainActor.run { store.set(.loading, for: kind) }
         do {
-            let config = ModelConfiguration(id: modelId)
-            // hub: and progressHandler: both have defaults in 2.25.7 — only configuration: is required.
-            let c = try await LLMModelFactory.shared.loadContainer(configuration: config)
+            let hub = HubApi(downloadBase: try ModelStorage.modelsDirectory())
+            let config = ModelConfiguration(directory: modelDirectory)
+            let c = try await LLMModelFactory.shared.loadContainer(
+                hub: hub,
+                configuration: config
+            )
             self.container = c
             await MainActor.run { store.set(.resident, for: kind) }
         } catch {

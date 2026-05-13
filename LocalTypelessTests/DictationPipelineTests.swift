@@ -14,8 +14,10 @@ final class DictationPipelineTests: XCTestCase {
         DictationPipeline.Input(
             audioBuffer: buffer,
             startedAt: Date(),
+            targetAppProcessIdentifier: nil,
             targetAppBundleId: "com.example.App",
             targetAppName: "Example",
+            polishEnabled: true,
             polishPrompt: "",
             transcribeTimeout: 2,
             polishTimeout: 2,
@@ -40,6 +42,7 @@ final class DictationPipelineTests: XCTestCase {
             case .transcribing: events.append("transcribing")
             case .polishing:    events.append("polishing")
             case .injecting:    events.append("injecting")
+            case .copyFallback: events.append("copyFallback")
             case .done:         events.append("done")
             case .failed(let m): events.append("failed:\(m)")
             }
@@ -66,8 +69,10 @@ final class DictationPipelineTests: XCTestCase {
         input = DictationPipeline.Input(
             audioBuffer: input.audioBuffer,
             startedAt: input.startedAt,
+            targetAppProcessIdentifier: nil,
             targetAppBundleId: nil,
             targetAppName: nil,
+            polishEnabled: true,
             polishPrompt: "",
             transcribeTimeout: 0.1,
             polishTimeout: 1,
@@ -102,6 +107,123 @@ final class DictationPipelineTests: XCTestCase {
         XCTAssertEqual(injector.injected, "raw transcript")
         let stored = try history.all()
         XCTAssertEqual(stored.first?.polishedText, "raw transcript")
+    }
+
+    func test_polishDisabled_skipsPolishAndUsesRawTranscript() async throws {
+        let history = InMemoryHistoryStore()
+        let injector = RecordingTextInjector()
+        let pipeline = DictationPipeline(.init(
+            asr: StubASRService(fixedText: "raw transcript", language: "en"),
+            polish: ThrowingPolishService(),
+            injector: injector,
+            historyStore: history,
+            audioStore: nil
+        ))
+
+        let base = makeInput(buffer: makeBuffer())
+        let input = DictationPipeline.Input(
+            audioBuffer: base.audioBuffer,
+            startedAt: base.startedAt,
+            targetAppProcessIdentifier: nil,
+            targetAppBundleId: base.targetAppBundleId,
+            targetAppName: base.targetAppName,
+            polishEnabled: false,
+            polishPrompt: "",
+            transcribeTimeout: base.transcribeTimeout,
+            polishTimeout: base.polishTimeout,
+            saveAudio: base.saveAudio,
+            audioRetentionDays: base.audioRetentionDays
+        )
+
+        var events: [String] = []
+        await pipeline.run(input) { event in
+            switch event {
+            case .transcribing: events.append("transcribing")
+            case .polishing: events.append("polishing")
+            case .injecting: events.append("injecting")
+            case .done: events.append("done")
+            case .copyFallback, .failed: break
+            }
+        }
+
+        XCTAssertEqual(events, ["transcribing", "injecting", "done"])
+        XCTAssertEqual(injector.injected, "raw transcript")
+        XCTAssertEqual(try history.all().first?.polishedText, "raw transcript")
+    }
+
+    func test_polishDisabled_normalizesChineseSpacing() async throws {
+        let history = InMemoryHistoryStore()
+        let injector = RecordingTextInjector()
+        let pipeline = DictationPipeline(.init(
+            asr: StubASRService(fixedText: "我 们 明 天 发布", language: "zh"),
+            polish: ThrowingPolishService(),
+            injector: injector,
+            historyStore: history,
+            audioStore: nil
+        ))
+
+        let base = makeInput(buffer: makeBuffer())
+        let input = DictationPipeline.Input(
+            audioBuffer: base.audioBuffer,
+            startedAt: base.startedAt,
+            targetAppProcessIdentifier: nil,
+            targetAppBundleId: base.targetAppBundleId,
+            targetAppName: base.targetAppName,
+            polishEnabled: false,
+            polishPrompt: "",
+            transcribeTimeout: base.transcribeTimeout,
+            polishTimeout: base.polishTimeout,
+            saveAudio: base.saveAudio,
+            audioRetentionDays: base.audioRetentionDays
+        )
+
+        await pipeline.run(input) { _ in }
+
+        XCTAssertEqual(injector.injected, "我们明天发布")
+        XCTAssertEqual(try history.all().first?.rawTranscript, "我 们 明 天 发布")
+        XCTAssertEqual(try history.all().first?.polishedText, "我们明天发布")
+    }
+
+    func test_polishSuccess_normalizesChineseSpacingBeforeInjection() async throws {
+        let history = InMemoryHistoryStore()
+        let injector = RecordingTextInjector()
+        let pipeline = DictationPipeline(.init(
+            asr: StubASRService(fixedText: "我 来 测试 一下 当前 的 一个 实际 状态", language: "zh"),
+            polish: StubPolishService(),
+            injector: injector,
+            historyStore: history,
+            audioStore: nil
+        ))
+
+        await pipeline.run(makeInput(buffer: makeBuffer())) { _ in }
+
+        XCTAssertEqual(injector.injected, "我来测试一下当前的一个实际状态")
+        XCTAssertEqual(try history.all().first?.polishedText, "我来测试一下当前的一个实际状态")
+    }
+
+    func test_injectionFallback_emitsCopyFallbackAndStillPersists() async throws {
+        let history = InMemoryHistoryStore()
+        let pipeline = DictationPipeline(.init(
+            asr: StubASRService(fixedText: "hello", language: "en"),
+            polish: StubPolishService(),
+            injector: NoFocusedWindowTextInjector(),
+            historyStore: history,
+            audioStore: nil
+        ))
+
+        var sawFallback = false
+        await pipeline.run(makeInput(buffer: makeBuffer())) { event in
+            if case .copyFallback(let text, let reason) = event {
+                sawFallback = true
+                XCTAssertEqual(text, "Hello.")
+                XCTAssertEqual(reason, .noFocusedWindow)
+            }
+        }
+
+        XCTAssertTrue(sawFallback)
+        let stored = try history.all()
+        XCTAssertEqual(stored.count, 1)
+        XCTAssertEqual(stored.first?.polishedText, "Hello.")
     }
 }
 
@@ -148,13 +270,20 @@ private final class ThrowingPolishService: PolishService {
 /// without accessibility permission.
 @MainActor
 private final class NoopTextInjector: TextInjector {
-    override func inject(_ text: String) async throws { /* no-op */ }
+    override func inject(_ text: String, target: TextInjector.Target?) async throws { /* no-op */ }
 }
 
 @MainActor
 private final class RecordingTextInjector: TextInjector {
     var injected: String = ""
-    override func inject(_ text: String) async throws {
+    override func inject(_ text: String, target: TextInjector.Target?) async throws {
         injected = text
+    }
+}
+
+@MainActor
+private final class NoFocusedWindowTextInjector: TextInjector {
+    override func inject(_ text: String, target: TextInjector.Target?) async throws {
+        throw TextInjector.InjectionError.noFocusedWindow
     }
 }

@@ -37,6 +37,14 @@ struct SettingsAdvancedTab: View {
             }
 
             Section("Models") {
+                Picker("Polish", selection: $settings.polishMode) {
+                    Text("Automatic").tag(PolishMode.automatic)
+                    Text("On").tag(PolishMode.on)
+                    Text("Off").tag(PolishMode.off)
+                }
+                Text(polishMemorySummary())
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 modelRow(
                     label: "Speech (Whisper Large v3 Turbo)",
                     status: modelStatusStore.status(for: .asrWhisperLargeV3Turbo),
@@ -45,6 +53,7 @@ struct SettingsAdvancedTab: View {
                 modelRow(
                     label: "Polish (Qwen2.5-3B-Instruct 4bit)",
                     status: modelStatusStore.status(for: .polishQwen25_3bInstruct4bit),
+                    isDisabled: settings.polishMode == .off,
                     onDownload: onDownloadPolish
                 )
             }
@@ -73,26 +82,49 @@ struct SettingsAdvancedTab: View {
     @ViewBuilder
     private func modelRow(label: String,
                            status: ModelStatus,
+                           isDisabled: Bool = false,
                            onDownload: @escaping () -> Void) -> some View {
         HStack {
             VStack(alignment: .leading) {
                 Text(label)
-                Text(describe(status)).font(.caption).foregroundStyle(.secondary)
+                Text(isDisabled ? String(localized: "Disabled") : describe(status))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
             Spacer()
-            if case .resident = status {
-                Label("Ready", systemImage: "checkmark.seal.fill").foregroundStyle(.green)
+            if isDisabled {
+                EmptyView()
             } else {
-                Button("Download", action: onDownload)
+                switch status {
+                case .resident:
+                    Label("Ready", systemImage: "checkmark.seal.fill").foregroundStyle(.green)
+                case .downloaded:
+                    EmptyView()
+                case .downloading, .loading:
+                    Button("Working…") {}.disabled(true)
+                case .notDownloaded, .failed:
+                    Button("Download", action: onDownload)
+                }
             }
         }
+    }
+
+    private func polishMemorySummary() -> String {
+        let snapshot = MemoryAdvisor.currentSnapshot()
+        let memoryLine = String(
+            format: String(localized: "Memory now: %@ available of %@."),
+            snapshot.availableDescription,
+            snapshot.totalDescription
+        )
+        let policy = String(localized: "Automatic skips polish when memory is tight.")
+        return "\(memoryLine) \(policy)"
     }
 
     private func describe(_ s: ModelStatus) -> String {
         switch s {
         case .notDownloaded:        return String(localized: "Not downloaded")
         case .downloading(let p):   return String(localized: "Downloading… \(Int(p * 100))%")
-        case .downloaded:           return String(localized: "Downloaded (not loaded)")
+        case .downloaded:           return String(localized: "Downloaded (loads automatically)")
         case .loading:              return String(localized: "Loading…")
         case .resident:             return String(localized: "Ready")
         case .failed(let m):        return String(localized: "Failed: \(m)")

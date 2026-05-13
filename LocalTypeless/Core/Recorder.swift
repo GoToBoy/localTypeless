@@ -6,16 +6,19 @@ final class Recorder {
 
     private let engine = AVAudioEngine()
     private let buffer: AudioBuffer
+    private let meter: AudioLevelMeter
     private var isRunning = false
     private let targetSampleRate: Double = 16_000
 
-    init(buffer: AudioBuffer) {
+    init(buffer: AudioBuffer, meter: AudioLevelMeter) {
         self.buffer = buffer
+        self.meter = meter
     }
 
     func start() throws {
         guard !isRunning else { return }
         buffer.reset()
+        meter.beginSession()
 
         let input = engine.inputNode
         let inputFormat = input.outputFormat(forBus: 0)
@@ -36,6 +39,7 @@ final class Recorder {
         // AudioBuffer is thread-safe via NSLock; capture it directly to avoid
         // touching any @MainActor-isolated state inside the tap closure.
         let tapBuffer = buffer
+        let tapMeter = meter
         input.installTap(onBus: 0, bufferSize: 4096, format: inputFormat) { pcm, _ in
             let outFrameCapacity = AVAudioFrameCount(
                 Double(pcm.frameLength) * 16_000 / inputFormat.sampleRate
@@ -56,6 +60,7 @@ final class Recorder {
             let count = Int(outBuf.frameLength)
             let samples = Array(UnsafeBufferPointer(start: chan, count: count))
             tapBuffer.append(samples)
+            tapMeter.record(samples: samples)
         }
 
         try engine.start()
@@ -67,6 +72,7 @@ final class Recorder {
         guard isRunning else { return }
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
+        meter.endSession()
         isRunning = false
         Log.recorder.info("recording stopped: \(self.buffer.durationSeconds, privacy: .public) s captured")
     }

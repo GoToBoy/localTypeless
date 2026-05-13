@@ -7,16 +7,50 @@ struct ModelDownloadView: View {
     let onCancel: () -> Void
 
     private var title: String {
-        switch kind {
-        case .asrWhisperLargeV3Turbo:       return "Download speech model"
-        case .polishQwen25_3bInstruct4bit:   return "Download polish model"
+        switch (kind, store.status(for: kind)) {
+        case (.asrWhisperLargeV3Turbo, .notDownloaded),
+             (.asrWhisperLargeV3Turbo, .failed):
+            return String(localized: "Download speech model")
+        case (.asrWhisperLargeV3Turbo, .downloaded):
+            return String(localized: "Speech model downloaded")
+        case (.asrWhisperLargeV3Turbo, .downloading):
+            return String(localized: "Downloading speech model")
+        case (.asrWhisperLargeV3Turbo, .loading):
+            return String(localized: "Loading speech model")
+        case (.asrWhisperLargeV3Turbo, .resident):
+            return String(localized: "Speech model ready")
+
+        case (.polishQwen25_3bInstruct4bit, .notDownloaded),
+             (.polishQwen25_3bInstruct4bit, .failed):
+            return String(localized: "Download polish model")
+        case (.polishQwen25_3bInstruct4bit, .downloaded):
+            return String(localized: "Polish model downloaded")
+        case (.polishQwen25_3bInstruct4bit, .downloading):
+            return String(localized: "Downloading polish model")
+        case (.polishQwen25_3bInstruct4bit, .loading):
+            return String(localized: "Loading polish model")
+        case (.polishQwen25_3bInstruct4bit, .resident):
+            return String(localized: "Polish model ready")
         }
     }
 
     private var subtitle: String {
+        switch store.status(for: kind) {
+        case .downloaded:
+            return String(localized: "Ready for dictation · loads automatically")
+        case .loading:
+            return String(localized: "Loading from local disk")
+        case .resident:
+            return String(localized: "Loaded into memory")
+        case .notDownloaded, .downloading, .failed:
+            break
+        }
+
         switch kind {
-        case .asrWhisperLargeV3Turbo:       return "~1.5 GB · offline after download"
-        case .polishQwen25_3bInstruct4bit:   return "~2 GB · offline after download"
+        case .asrWhisperLargeV3Turbo:
+            return String(localized: "~1.5 GB · offline after download")
+        case .polishQwen25_3bInstruct4bit:
+            return String(localized: "~2 GB · offline after download")
         }
     }
 
@@ -72,7 +106,7 @@ struct ModelDownloadView: View {
                     .foregroundStyle(.secondary)
             }
         case .downloaded:
-            Label("Downloaded (not loaded)", systemImage: "externaldrive.fill.badge.checkmark")
+            Label("Downloaded", systemImage: "externaldrive.fill.badge.checkmark")
         case .loading:
             HStack {
                 ProgressView().controlSize(.small)
@@ -95,10 +129,7 @@ struct ModelDownloadView: View {
                 .keyboardShortcut(.defaultAction)
         case .downloading, .loading:
             Button("Working…") {}.disabled(true)
-        case .downloaded:
-            Button("Load", action: onStart)
-                .keyboardShortcut(.defaultAction)
-        case .resident:
+        case .downloaded, .resident:
             Button("Done", action: onCancel)
                 .keyboardShortcut(.defaultAction)
         }

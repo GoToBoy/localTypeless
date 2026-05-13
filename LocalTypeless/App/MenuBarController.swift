@@ -8,26 +8,26 @@ final class MenuBarController {
     private let statusItem: NSStatusItem
     private let stateMachine: StateMachine
     private let modelStatusStore: ModelStatusStore
+    private let settings: AppSettings
     private let onOpenSettings: () -> Void
     private let onOpenHistory: () -> Void
     private let onUnloadModels: () -> Void
-    private let onOpenModelDownload: (ModelKind) -> Void
 
     init(
         stateMachine: StateMachine,
         modelStatusStore: ModelStatusStore,
+        settings: AppSettings,
         onOpenSettings: @escaping () -> Void,
         onOpenHistory: @escaping () -> Void,
-        onUnloadModels: @escaping () -> Void,
-        onOpenModelDownload: @escaping (ModelKind) -> Void
+        onUnloadModels: @escaping () -> Void
     ) {
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         self.stateMachine = stateMachine
         self.modelStatusStore = modelStatusStore
+        self.settings = settings
         self.onOpenSettings = onOpenSettings
         self.onOpenHistory = onOpenHistory
         self.onUnloadModels = onUnloadModels
-        self.onOpenModelDownload = onOpenModelDownload
         refresh()
         startObserving()
     }
@@ -40,30 +40,29 @@ final class MenuBarController {
     private func configureMenu() {
         let menu = NSMenu()
 
-        // Per-model status + optional download action
-        let modelEntries: [(ModelKind, String)] = [
-            (.asrWhisperLargeV3Turbo,     String(localized: "ASR model")),
-            (.polishQwen25_3bInstruct4bit, String(localized: "Polish model")),
-        ]
-        for (kind, name) in modelEntries {
-            let status = modelStatusStore.status(for: kind)
-            let statusLabel = NSMenuItem(
-                title: String(localized: "\(name): \(status.displayLabel)"),
-                action: nil, keyEquivalent: "")
-            statusLabel.isEnabled = false
-            menu.addItem(statusLabel)
+        let asrStatus = modelStatusStore.status(for: .asrWhisperLargeV3Turbo)
+        let asrLabel = NSMenuItem(
+            title: String(
+                format: String(localized: "ASR model: %@"),
+                asrStatus.displayLabel
+            ),
+            action: nil,
+            keyEquivalent: ""
+        )
+        asrLabel.isEnabled = false
+        menu.addItem(asrLabel)
 
-            if case .resident = status {
-                // Model is ready — no download item needed
-            } else {
-                let dl = NSMenuItem(title: String(localized: "Download \(name)…"),
-                                    action: #selector(downloadModelAction(_:)),
-                                    keyEquivalent: "")
-                dl.target = self
-                dl.representedObject = kind.rawValue
-                menu.addItem(dl)
-            }
-        }
+        let polishStatus = modelStatusStore.status(for: .polishQwen25_3bInstruct4bit)
+        let polishLabel = NSMenuItem(
+            title: String(
+                format: String(localized: "Polish model: %@"),
+                polishDisplayLabel(for: polishStatus)
+            ),
+            action: nil,
+            keyEquivalent: ""
+        )
+        polishLabel.isEnabled = false
+        menu.addItem(polishLabel)
 
         menu.addItem(.separator())
 
@@ -87,6 +86,7 @@ final class MenuBarController {
             _ = stateMachine.state
             _ = modelStatusStore.status(for: .asrWhisperLargeV3Turbo)
             _ = modelStatusStore.status(for: .polishQwen25_3bInstruct4bit)
+            _ = settings.polishMode
         } onChange: { [weak self] in
             Task { @MainActor in
                 self?.refresh()
@@ -114,10 +114,48 @@ final class MenuBarController {
     @objc private func openSettingsAction() { onOpenSettings() }
     @objc private func openHistoryAction() { onOpenHistory() }
     @objc private func unloadAction() { onUnloadModels() }
-    @objc private func downloadModelAction(_ sender: NSMenuItem) {
-        guard let raw = sender.representedObject as? String,
-              let kind = ModelKind(rawValue: raw) else { return }
-        onOpenModelDownload(kind)
+
+    private func polishDisplayLabel(for status: ModelStatus) -> String {
+        switch settings.polishMode {
+        case .off:
+            return String(localized: "off")
+        case .automatic:
+            return automaticPolishDisplayLabel(for: status)
+        case .on:
+            return explicitPolishDisplayLabel(for: status)
+        }
+    }
+
+    private func automaticPolishDisplayLabel(for status: ModelStatus) -> String {
+        switch status {
+        case .notDownloaded:
+            return String(localized: "not downloaded (optional)")
+        case .downloading, .loading, .failed:
+            return status.displayLabel
+        case .downloaded, .resident:
+            let snapshot = MemoryAdvisor.currentSnapshot()
+            guard MemoryAdvisor.shouldUsePolishAutomatically(snapshot: snapshot) else {
+                return String(localized: "auto skipped (low memory)")
+            }
+            return status == .resident
+                ? String(localized: "ready (in memory)")
+                : String(localized: "ready on demand")
+        }
+    }
+
+    private func explicitPolishDisplayLabel(for status: ModelStatus) -> String {
+        switch status {
+        case .downloaded, .resident:
+            let snapshot = MemoryAdvisor.currentSnapshot()
+            guard MemoryAdvisor.canUsePolishWhenExplicitlyEnabled(snapshot: snapshot) else {
+                return String(localized: "skipped (low memory)")
+            }
+            return status == .resident
+                ? String(localized: "ready (in memory)")
+                : String(localized: "ready on demand")
+        case .notDownloaded, .downloading, .loading, .failed:
+            return status.displayLabel
+        }
     }
 }
 
@@ -128,9 +166,9 @@ private extension ModelStatus {
         switch self {
         case .notDownloaded:          return String(localized: "not downloaded")
         case .downloading(let p):     return String(localized: "downloading (\(Int(p * 100))%)")
-        case .downloaded:             return String(localized: "downloaded")
+        case .downloaded:             return String(localized: "ready on demand")
         case .loading:                return String(localized: "loading…")
-        case .resident:               return String(localized: "ready")
+        case .resident:               return String(localized: "ready (in memory)")
         case .failed(let message):    return String(localized: "failed: \(message)")
         }
     }

@@ -9,6 +9,10 @@ enum UILanguageMode: String, Sendable, CaseIterable {
     case system, en, zhHans
 }
 
+enum PolishMode: String, Sendable, CaseIterable {
+    case automatic, on, off
+}
+
 @MainActor
 @Observable
 final class AppSettings {
@@ -24,6 +28,8 @@ final class AppSettings {
             rawValue: storage.string(forKey: "asrLanguageMode") ?? "") ?? .auto
         self._uiLanguageMode = UILanguageMode(
             rawValue: storage.string(forKey: "uiLanguageMode") ?? "") ?? .system
+        self._polishMode = PolishMode(
+            rawValue: storage.string(forKey: "polishMode") ?? "") ?? .automatic
         self._polishPromptOverride = storage.string(forKey: "polishPromptOverride") ?? ""
         self._audioRetentionEnabled = storage.bool(forKey: "audioRetentionEnabled")
         self._audioRetentionDays = storage.contains("audioRetentionDays")
@@ -65,6 +71,12 @@ final class AppSettings {
     var uiLanguageMode: UILanguageMode {
         get { _uiLanguageMode }
         set { _uiLanguageMode = newValue; storage.set(newValue.rawValue, forKey: "uiLanguageMode") }
+    }
+
+    private var _polishMode: PolishMode
+    var polishMode: PolishMode {
+        get { _polishMode }
+        set { _polishMode = newValue; storage.set(newValue.rawValue, forKey: "polishMode") }
     }
 
     private var _polishPromptOverride: String

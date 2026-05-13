@@ -14,7 +14,7 @@ struct HistoryView: View {
                 List(entries, id: \.id) { e in
                     VStack(alignment: .leading) {
                         Text(e.polishedText).font(.body)
-                        Text("\(e.language) · \(e.startedAt.formatted())")
+                        Text("\(languageLabel(for: e)) · \(e.startedAt.formatted())")
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }
@@ -27,5 +27,16 @@ struct HistoryView: View {
 
     private func reload() {
         entries = (try? store.all()) ?? []
+    }
+
+    private func languageLabel(for entry: DictationEntry) -> String {
+        switch TranscriptLanguage.normalized(reported: entry.language, text: entry.polishedText) {
+        case "zh":
+            return String(localized: "中文")
+        case "en":
+            return String(localized: "English")
+        case let code:
+            return code.uppercased()
+        }
     }
 }
