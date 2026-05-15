@@ -68,18 +68,14 @@ jobs:
         run: brew install xcodegen
 
       - name: Import signing certificate
+        timeout-minutes: 2
         env:
           CERT_P12_BASE64: ${{ secrets.MACOS_SIGNING_CERTIFICATE_P12_BASE64 }}
           CERT_PASSWORD: ${{ secrets.MACOS_SIGNING_CERTIFICATE_PASSWORD }}
           KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
-          SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
         run: |
           if [ -z "$CERT_P12_BASE64" ]; then
             echo "::error::MACOS_SIGNING_CERTIFICATE_P12_BASE64 is required for release builds — release artifacts must be signed with the stable CI certificate so TCC grants survive across releases."
-            exit 1
-          fi
-          if [ -z "$SIGNING_IDENTITY" ]; then
-            echo "::error::MACOS_SIGNING_IDENTITY is required for release builds."
             exit 1
           fi
 
@@ -95,20 +91,9 @@ jobs:
           security import "$CERT_PATH" \
             -P "$CERT_PASSWORD" -A -f pkcs12 -k "$KEYCHAIN_PATH"
           rm "$CERT_PATH"
-
-          # Trust the self-signed CI certificate as a root in this temporary
-          # keychain. Without this, `security find-identity -v` reports
-          # CSSMERR_TP_NOT_TRUSTED and codesign cannot use the identity as a
-          # valid codesigning certificate.
-          TRUST_CERT_PATH="$RUNNER_TEMP/signing-cert.cer"
-          security find-certificate \
-            -c "$SIGNING_IDENTITY" \
-            -p "$KEYCHAIN_PATH" > "$TRUST_CERT_PATH"
-          security add-trusted-cert \
-            -r trustRoot \
-            -k "$KEYCHAIN_PATH" \
-            "$TRUST_CERT_PATH"
-          rm "$TRUST_CERT_PATH"
+          # Do not call `security add-trusted-cert` on hosted runners. It can
+          # block waiting for SecurityAgent UI. The later `make sign-ci` step
+          # is the real signing gate.
 
           security set-key-partition-list \
             -S apple-tool:,apple:,codesign: \
@@ -119,8 +104,9 @@ jobs:
           security default-keychain -d user -s "$KEYCHAIN_PATH"
 
           echo "Imported identity:"
-          security find-identity -v "$KEYCHAIN_PATH"
-          security find-identity -p codesigning -v "$KEYCHAIN_PATH"
+          security find-identity -v "$KEYCHAIN_PATH" || true
+          security find-identity -p codesigning -v "$KEYCHAIN_PATH" || true
+          security find-identity "$KEYCHAIN_PATH" || true
 
       - name: Build (unsigned)
         env:
