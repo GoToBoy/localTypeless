@@ -5,7 +5,7 @@
 | Flavor | Runner | Make target (build) | Make target (test) | Artifact |
 |---|---|---|---|---|
 | `arm64` | `macos-14` | `build-ci` | `test-ci` | `LocalTypeless-arm64.zip` |
-| `x86_64` | `macos-13` | `build-portable-ci` | `test-portable-ci` | `LocalTypeless-x86_64.zip` |
+| `x86_64` | `macos-15-intel` | `build-portable-ci` | `test-portable-ci` | `LocalTypeless-x86_64.zip` |
 
 Each job: pin Xcode → install xcodegen → import the signing certificate into a temp keychain → build → verify architecture → codesign → zip → upload artifact → run tests (allowed to fail without blocking the artifact).
 
@@ -13,6 +13,7 @@ Each job: pin Xcode → install xcodegen → import the signing certificate into
 
 - **`-ci` make targets drop `-quiet`** so `xcodebuild` errors actually appear in workflow logs. The local targets keep `-quiet` so the terminal stays readable.
 - **Build is unsigned, then signed separately.** `build-ci` passes `CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO`, so xcodebuild emits a linker-ad-hoc binary that we overwrite via `make sign-ci`. This keeps signing logic out of the Xcode build settings and avoids xcodebuild trying to pick an identity from an empty keychain on first run.
+- **The CI self-signed certificate must be trusted after import.** The workflow imports the p12, extracts the certificate by `MACOS_SIGNING_IDENTITY`, and runs `security add-trusted-cert -r trustRoot -k "$KEYCHAIN_PATH" ...` against the temporary keychain. Without that, macOS reports the identity as `CSSMERR_TP_NOT_TRUSTED`, `security find-identity -v` finds zero valid identities, and `codesign` cannot use the stable CI identity.
 - **Tests run after artifact upload, with `continue-on-error`.** A red test job doesn't prevent the build artifact from shipping. Local `make test` remains the pre-merge gate.
 - **Xcode is pinned via `maxim-lobanov/setup-xcode@v1` with `latest-stable`** because xcodegen 2.45+ emits pbxproj `objectVersion 77`, which only Xcode 16+ can read. `latest-stable` picks the newest GA Xcode the runner image has installed.
 

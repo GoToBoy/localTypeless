@@ -25,11 +25,12 @@ jobs:
             artifact: LocalTypeless-arm64
             app_path: build/arm64/Build/Products/Debug/LocalTypeless.app
 
-          # Portable / Intel: no MLX, no WhisperKit, no LLM polish. macos-13
-          # runners are x86_64; tests run natively and exercise the
+          # Portable / Intel: no MLX, no WhisperKit, no LLM polish.
+          # GitHub's current Intel macOS standard runners use the
+          # `macos-*-intel` labels; tests run natively and exercise the
           # PortableEngine wiring via EngineFactoryTests.
           - flavor: x86_64
-            runner: macos-13
+            runner: macos-15-intel
             make_build: build-portable-ci
             make_test: test-portable-ci
             artifact: LocalTypeless-x86_64
@@ -70,6 +71,7 @@ jobs:
           CERT_P12_BASE64: ${{ secrets.MACOS_SIGNING_CERTIFICATE_P12_BASE64 }}
           CERT_PASSWORD: ${{ secrets.MACOS_SIGNING_CERTIFICATE_PASSWORD }}
           KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
+          SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
         run: |
           if [ -z "$CERT_P12_BASE64" ]; then
             echo "::warning::MACOS_SIGNING_CERTIFICATE_P12_BASE64 not set — skipping signing setup. The artifact will be ad-hoc signed and TCC grants on the user's machine will reset on every release."
@@ -88,11 +90,25 @@ jobs:
           security import "$CERT_PATH" \
             -P "$CERT_PASSWORD" -A -f pkcs12 -k "$KEYCHAIN_PATH"
           rm "$CERT_PATH"
-          # NOTE: we intentionally do NOT run `security add-trusted-cert` here.
-          # It writes the user trust domain, which on macOS triggers a GUI
-          # SecurityAgent prompt — runners have no GUI so the step hangs until
-          # the job times out. `codesign --sign "$CN"` looks up the identity by
-          # name in the keychain and does not require trust-policy validation.
+
+          # A self-signed certificate imports with its private key, but macOS
+          # still reports it as CSSMERR_TP_NOT_TRUSTED until the certificate is
+          # trusted as a root in the temporary keychain. Do not pass `-p
+          # codeSign` here: on current runners that leaves the identity
+          # untrusted for `security find-identity -v`.
+          if [ -n "$SIGNING_IDENTITY" ]; then
+            TRUST_CERT_PATH="$RUNNER_TEMP/signing-cert.cer"
+            security find-certificate \
+              -c "$SIGNING_IDENTITY" \
+              -p "$KEYCHAIN_PATH" > "$TRUST_CERT_PATH"
+            security add-trusted-cert \
+              -r trustRoot \
+              -k "$KEYCHAIN_PATH" \
+              "$TRUST_CERT_PATH"
+            rm "$TRUST_CERT_PATH"
+          else
+            echo "::warning::MACOS_SIGNING_IDENTITY not set — imported certificate will not be trusted because CI will sign ad-hoc."
+          fi
 
           security set-key-partition-list \
             -S apple-tool:,apple:,codesign: \
@@ -109,7 +125,9 @@ jobs:
           echo "=== All certs in build keychain ==="
           security find-certificate -a "$KEYCHAIN_PATH" | grep -E '"alis"|"labl"' || true
           echo "=== Identities (valid, any policy) ==="
-          security find-identity -v "$KEYCHAIN_PATH" || true
+          security find-identity -v "$KEYCHAIN_PATH"
+          echo "=== Identities (valid, codesigning policy) ==="
+          security find-identity -p codesigning -v "$KEYCHAIN_PATH"
           echo "=== Identities (all, including untrusted) ==="
           security find-identity "$KEYCHAIN_PATH" || true
 
