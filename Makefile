@@ -15,6 +15,8 @@ X86_BUILD = build/x86_64
 # users build from `make build-portable` and install manually if needed.
 APP = $(ARM_BUILD)/Build/Products/Debug/LocalTypeless.app
 APP_PORTABLE = $(X86_BUILD)/Build/Products/Debug/LocalTypeless.app
+APP_CI = $(ARM_BUILD)/Build/Products/Release/LocalTypeless.app
+APP_PORTABLE_CI = $(X86_BUILD)/Build/Products/Release/LocalTypeless.app
 INSTALL_APP = /Applications/LocalTypeless.app
 LOCAL_TYPELESS_CODE_SIGN_IDENTITY ?= Glossa Local Dev Code Signing
 ENTITLEMENTS = LocalTypeless/Resources/LocalTypeless.entitlements
@@ -84,12 +86,12 @@ CI_XCB_FLAGS = \
 	CODE_SIGNING_ALLOWED=NO
 
 build-ci: generate
-	xcodebuild build -scheme $(SCHEME) -destination '$(DEST_ARM)' \
+	xcodebuild build -scheme $(SCHEME) -configuration Release -destination '$(DEST_ARM)' \
 		-project LocalTypeless.xcodeproj \
 		-derivedDataPath $(ARM_BUILD) $(CI_XCB_FLAGS)
 
 build-portable-ci: generate-portable
-	xcodebuild build -scheme $(SCHEME) -destination '$(DEST_X86)' \
+	xcodebuild build -scheme $(SCHEME) -configuration Release -destination '$(DEST_X86)' \
 		-project LocalTypelessPortable.xcodeproj \
 		-derivedDataPath $(X86_BUILD) $(CI_XCB_FLAGS)
 

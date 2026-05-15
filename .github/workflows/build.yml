@@ -23,7 +23,7 @@ jobs:
             make_build: build-ci
             make_test: test-ci
             artifact: LocalTypeless-arm64
-            app_path: build/arm64/Build/Products/Debug/LocalTypeless.app
+            app_path: build/arm64/Build/Products/Release/LocalTypeless.app
 
           # Portable / Intel: no MLX, no WhisperKit, no LLM polish.
           # GitHub's current Intel macOS standard runners use the
@@ -34,7 +34,7 @@ jobs:
             make_build: build-portable-ci
             make_test: test-portable-ci
             artifact: LocalTypeless-x86_64
-            app_path: build/x86_64/Build/Products/Debug/LocalTypeless.app
+            app_path: build/x86_64/Build/Products/Release/LocalTypeless.app
 
     runs-on: ${{ matrix.runner }}
     name: ${{ matrix.flavor }}

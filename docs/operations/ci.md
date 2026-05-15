@@ -12,6 +12,7 @@ Each job: pin Xcode → install xcodegen → import the signing certificate into
 ## Why this shape
 
 - **`-ci` make targets drop `-quiet`** so `xcodebuild` errors actually appear in workflow logs. The local targets keep `-quiet` so the terminal stays readable.
+- **Release artifacts use Xcode's `Release` configuration.** Xcode 16 Debug builds can emit a `LocalTypeless.debug.dylib` sidecar; hardened runtime library validation rejects that sidecar on user machines. CI therefore builds the uploadable `.app` from `Release`, then signs it separately.
 - **Build is unsigned, then signed separately.** `build-ci` passes `CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO`, so xcodebuild emits a linker-ad-hoc binary that we overwrite via `make sign-ci`. This keeps signing logic out of the Xcode build settings and avoids xcodebuild trying to pick an identity from an empty keychain on first run.
 - **Do not trust the self-signed certificate inside CI.** Hosted macOS runners can block on `security add-trusted-cert` waiting for SecurityAgent UI. The workflow only imports the p12 and unlocks codesign access with `security set-key-partition-list`; diagnostics may show `CSSMERR_TP_NOT_TRUSTED`, but the later `make sign-ci` step is the actual signing gate.
 - **Tests run after artifact upload, with `continue-on-error`.** A red test job doesn't prevent the build artifact from shipping. Local `make test` remains the pre-merge gate.
