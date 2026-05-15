@@ -25,12 +25,12 @@ jobs:
           - flavor: arm64
             runner: macos-14
             make_build: build-ci
-            app_path: build/arm64/Build/Products/Release/LocalTypeless.app
+            app_path: build/arm64/Build/Products/Debug/LocalTypeless.app
 
           - flavor: x86_64
             runner: macos-15-intel
             make_build: build-portable-ci
-            app_path: build/x86_64/Build/Products/Release/LocalTypeless.app
+            app_path: build/x86_64/Build/Products/Debug/LocalTypeless.app
 
     runs-on: ${{ matrix.runner }}
     name: ${{ matrix.flavor }}
