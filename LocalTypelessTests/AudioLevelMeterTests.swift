@@ -68,6 +68,18 @@ final class AudioLevelMeterTests: XCTestCase {
         XCTAssertTrue(meter.hasMeaningfulSpeech)
     }
 
+    func test_defaultThresholdCountsQuietBuiltInMicrophoneSpeech() {
+        let meter = AudioLevelMeter(minimumSpeechFrames: 3)
+        meter.beginSession()
+
+        for _ in 0..<3 {
+            meter.record(samples: Array(repeating: Float(0.01), count: 128))
+        }
+
+        XCTAssertTrue(meter.hasMeaningfulSpeech)
+        XCTAssertEqual(meter.peakRMS, 0.01, accuracy: 0.0001)
+    }
+
     func test_voiceActivityReleasesAfterHeldSilentFrames() {
         let meter = AudioLevelMeter(historySize: 6, silenceThreshold: 0.02, activeHoldFrames: 2)
         meter.beginSession()

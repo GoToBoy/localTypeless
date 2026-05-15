@@ -22,6 +22,9 @@ final class Recorder {
 
         let input = engine.inputNode
         let inputFormat = input.outputFormat(forBus: 0)
+        Log.recorder.info(
+            "input format before recording: \(inputFormat.sampleRate, privacy: .public) Hz, \(inputFormat.channelCount, privacy: .public) ch, interleaved \(inputFormat.isInterleaved, privacy: .public)"
+        )
 
         guard let targetFormat = AVAudioFormat(
             commonFormat: .pcmFormatFloat32,
@@ -74,7 +77,9 @@ final class Recorder {
         engine.stop()
         meter.endSession()
         isRunning = false
-        Log.recorder.info("recording stopped: \(self.buffer.durationSeconds, privacy: .public) s captured")
+        Log.recorder.info(
+            "recording stopped: \(self.buffer.durationSeconds, privacy: .public) s captured, peak RMS \(self.meter.peakRMS, privacy: .public), speech \(self.meter.hasMeaningfulSpeech, privacy: .public)"
+        )
     }
 
     enum RecorderError: Error {

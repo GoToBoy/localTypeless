@@ -14,10 +14,11 @@ final class AudioLevelMeter: @unchecked Sendable {
     private var head = 0
     private var voiceHoldRemaining = 0
     private var speechFrameCount = 0
+    private var maxRMS: Float = 0
 
     init(
         historySize: Int = 64,
-        silenceThreshold: Float = 0.018,
+        silenceThreshold: Float = 0.006,
         activeHoldFrames: Int = 3,
         minimumSpeechFrames: Int = 3
     ) {
@@ -40,6 +41,7 @@ final class AudioLevelMeter: @unchecked Sendable {
         head = 0
         voiceHoldRemaining = 0
         speechFrameCount = 0
+        maxRMS = 0
     }
 
     func endSession() {
@@ -62,6 +64,7 @@ final class AudioLevelMeter: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
 
+        maxRMS = max(maxRMS, rms)
         if isVoiceFrame {
             voiceHoldRemaining = activeHoldFrames
             speechFrameCount += 1
@@ -101,6 +104,12 @@ final class AudioLevelMeter: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         return speechFrameCount >= minimumSpeechFrames
+    }
+
+    var peakRMS: Float {
+        lock.lock()
+        defer { lock.unlock() }
+        return maxRMS
     }
 
     func history(count: Int) -> [Float] {

@@ -223,7 +223,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             mediaController.resumeIfPaused()
         }
         guard audioLevelMeter.hasMeaningfulSpeech else {
-            Log.recorder.info("recording discarded: no speech detected")
+            Log.recorder.info(
+                "recording discarded: no speech detected; peak RMS \(self.audioLevelMeter.peakRMS, privacy: .public)"
+            )
             stateMachine.cancelRecording()
             return
         }
