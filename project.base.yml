@@ -1,0 +1,67 @@
+name: LocalTypeless
+options:
+  bundleIdPrefix: com.localtypeless
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+  developmentLanguage: en
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+    SWIFT_STRICT_CONCURRENCY: complete
+    ONLY_ACTIVE_ARCH: NO
+packages:
+  GRDB:
+    url: https://github.com/groue/GRDB.swift
+    from: 6.29.0
+targets:
+  LocalTypeless:
+    type: application
+    platform: macOS
+    sources:
+      - path: LocalTypeless
+    resources:
+      - LocalTypeless/Resources
+    info:
+      path: LocalTypeless/Resources/Info.plist
+      properties:
+        LSUIElement: true
+        NSMicrophoneUsageDescription: local-typeless needs microphone access to record your dictation audio.
+        NSAccessibilityUsageDescription: local-typeless needs Accessibility access to inject transcribed text into the focused app and to capture your global hotkey.
+        CFBundleDisplayName: local-typeless
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+    entitlements:
+      path: LocalTypeless/Resources/LocalTypeless.entitlements
+      properties:
+        com.apple.security.app-sandbox: false
+        com.apple.security.device.audio-input: true
+    dependencies:
+      - package: GRDB
+  LocalTypelessTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: LocalTypelessTests
+    resources:
+      - path: LocalTypelessTests/Fixtures
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: LocalTypeless
+schemes:
+  LocalTypeless:
+    build:
+      targets:
+        LocalTypeless: all
+        LocalTypelessTests: [test]
+    test:
+      targets:
+        - LocalTypelessTests
+      environmentVariables:
+        - variable: LOCAL_TYPELESS_SKIP_MODEL_TESTS
+          value: "1"
+          isEnabled: true

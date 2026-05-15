@@ -25,6 +25,11 @@ enum ModelStorage {
             return whisperModelDirectory()
         case .polishQwen25_3bInstruct4bit:
             return polishModelDirectory()
+        case .asrWhisperCppSmall:
+            // whisper.cpp ships a single GGML file rather than a directory of
+            // weights, so `WhisperCppModelManager` does its own existence
+            // check. No directory to expose here.
+            return nil
         }
     }
 

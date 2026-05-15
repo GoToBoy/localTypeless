@@ -3,8 +3,9 @@ import SwiftUI
 struct SettingsAdvancedTab: View {
     @Bindable var settings: AppSettings
     let modelStatusStore: ModelStatusStore
-    let onDownloadAsr: () -> Void
-    let onDownloadPolish: () -> Void
+    let requiredModelKinds: [ModelKind]
+    let polishAvailable: Bool
+    let onDownload: (ModelKind) -> Void
     let firstRunState: FirstRunState
     let onReopenOnboarding: () -> Void
 
@@ -37,25 +38,26 @@ struct SettingsAdvancedTab: View {
             }
 
             Section("Models") {
-                Picker("Polish", selection: $settings.polishMode) {
-                    Text("Automatic").tag(PolishMode.automatic)
-                    Text("On").tag(PolishMode.on)
-                    Text("Off").tag(PolishMode.off)
+                if polishAvailable {
+                    Picker("Polish", selection: $settings.polishMode) {
+                        Text("Automatic").tag(PolishMode.automatic)
+                        Text("On").tag(PolishMode.on)
+                        Text("Off").tag(PolishMode.off)
+                    }
+                    Text(polishMemorySummary())
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
-                Text(polishMemorySummary())
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                modelRow(
-                    label: "Speech (Whisper Large v3 Turbo)",
-                    status: modelStatusStore.status(for: .asrWhisperLargeV3Turbo),
-                    onDownload: onDownloadAsr
-                )
-                modelRow(
-                    label: "Polish (Qwen2.5-3B-Instruct 4bit)",
-                    status: modelStatusStore.status(for: .polishQwen25_3bInstruct4bit),
-                    isDisabled: settings.polishMode == .off,
-                    onDownload: onDownloadPolish
-                )
+                ForEach(requiredModelKinds, id: \.self) { kind in
+                    let polishDisabled = (kind == .polishQwen25_3bInstruct4bit
+                                          && settings.polishMode == .off)
+                    modelRow(
+                        label: kind.displayName,
+                        status: modelStatusStore.status(for: kind),
+                        isDisabled: polishDisabled,
+                        onDownload: { onDownload(kind) }
+                    )
+                }
             }
 
             Section(String(localized: "First-run experience")) {

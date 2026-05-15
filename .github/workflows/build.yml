@@ -1,0 +1,78 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# This workflow only consumes matrix-controlled and runner-controlled values.
+# It never interpolates user-supplied event payload (issue title, PR body, etc.)
+# into a shell context.
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Apple Silicon: WhisperKit + MLX + LLM polish. Full test suite runs.
+          # macos-14 runners are arm64.
+          - flavor: arm64
+            runner: macos-14
+            make_target: test
+            artifact: LocalTypeless-arm64
+            app_path: build/arm64/Build/Products/Debug/LocalTypeless.app
+
+          # Portable / Intel: no MLX, no WhisperKit, no LLM polish.
+          # macos-13 runners are x86_64; tests run natively and exercise the
+          # PortableEngine wiring via EngineFactoryTests.
+          - flavor: x86_64
+            runner: macos-13
+            make_target: test-portable
+            artifact: LocalTypeless-x86_64
+            app_path: build/x86_64/Build/Products/Debug/LocalTypeless.app
+
+    runs-on: ${{ matrix.runner }}
+    name: ${{ matrix.flavor }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -switch /Applications/Xcode.app
+
+      - name: Install xcodegen
+        run: brew install xcodegen
+
+      - name: Build
+        env:
+          MAKE_TARGET: ${{ matrix.make_target }}
+        run: make "$MAKE_TARGET"
+
+      - name: Verify binary architecture
+        env:
+          APP_PATH: ${{ matrix.app_path }}
+          EXPECTED_ARCH: ${{ matrix.flavor }}
+        run: |
+          BIN="$APP_PATH/Contents/MacOS/LocalTypeless"
+          file "$BIN"
+          file "$BIN" | grep -q "$EXPECTED_ARCH" || {
+            echo "::error::expected $EXPECTED_ARCH binary, got $(file "$BIN")"
+            exit 1
+          }
+
+      - name: Zip .app
+        env:
+          APP_PATH: ${{ matrix.app_path }}
+          ARTIFACT: ${{ matrix.artifact }}
+        run: |
+          cd "$(dirname "$APP_PATH")"
+          zip -ry "$RUNNER_TEMP/$ARTIFACT.zip" "$(basename "$APP_PATH")"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ runner.temp }}/${{ matrix.artifact }}.zip
+          if-no-files-found: error
+          retention-days: 14

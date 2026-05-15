@@ -9,8 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var audioBuffer: AudioBuffer!
     private var audioLevelMeter: AudioLevelMeter!
     private var stateMachine: StateMachine!
-    private var asrService: ASRService!
-    private var polishService: PolishService!
+    private var engine: (any DictationEngine)!
     private var textInjector: TextInjector!
     private var historyStore: HistoryStore?
     private var audioStore: AudioStore?
@@ -19,8 +18,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var pipeline: DictationPipeline!
     private var mediaController: MediaController!
 
-    private var modelManager: (any ASRModelManaging)!
-    private var mlxPolishManager: (any PolishModelManaging)!
     private var modelStatusStore: ModelStatusStore!
     private var modelDownloadWindow: NSWindow?
     private var asrPrewarmTask: Task<Void, Never>?
@@ -49,10 +46,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         stateMachine = StateMachine()
         modelStatusStore = ModelStatusStore()
         modelStatusStore.refreshDownloadedStatuses()
-        modelManager = WhisperKitModelManager(store: modelStatusStore)
-        mlxPolishManager = MLXPolishModelManager(store: modelStatusStore)
-        asrService = WhisperKitASRService(manager: modelManager)
-        polishService = MLXPolishService(manager: mlxPolishManager)
+        engine = EngineFactory.make(store: modelStatusStore)
         textInjector = TextInjector()
         mediaController = MediaController()
         historyStore = Self.makeHistoryStore()
@@ -95,8 +89,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         pipeline = DictationPipeline(.init(
-            asr: asrService,
-            polish: polishService,
+            asr: engine.asr,
+            polish: engine.polish,
             injector: textInjector,
             historyStore: historyStore,
             audioStore: audioStore
@@ -137,15 +131,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func applySettingsChange() {
         installHotkey()
-        if let whisperService = asrService as? WhisperKitASRService {
-            whisperService.setOptions(ASROptions(forcedLanguage: {
-                switch settings.asrLanguageMode {
-                case .auto: return nil
-                case .en: return "en"
-                case .zh: return "zh"
-                }
-            }()))
-        }
+        engine.setASROptions(ASROptions(forcedLanguage: {
+            switch settings.asrLanguageMode {
+            case .auto: return nil
+            case .en: return "en"
+            case .zh: return "zh"
+            }
+        }()))
         applyInjectorOptions()
         LaunchAtLogin.applySilently(settings.launchAtLogin)
         applyPolishMemoryPolicy()
@@ -171,15 +163,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - End-to-end loop
 
     /// Guard that required model files exist before recording starts. ASR is
-    /// mandatory; polish is optional unless the user explicitly enables it.
+    /// mandatory; the polish model is only required when the user explicitly
+    /// enabled polish (`.on`). In `.automatic`, polish is best-effort and
+    /// downloads happen on demand from Settings.
     private func ensureModelsDownloadedForRecording() -> Bool {
         modelStatusStore.refreshDownloadedStatuses()
-        if !modelStatusStore.canLoadOnDemand(.asrWhisperLargeV3Turbo) {
-            openModelDownload(kind: .asrWhisperLargeV3Turbo); return false
-        }
-        if settings.polishMode == .on
-            && !modelStatusStore.canLoadOnDemand(.polishQwen25_3bInstruct4bit) {
-            openModelDownload(kind: .polishQwen25_3bInstruct4bit); return false
+        for kind in engine.requiredModelKinds {
+            if kind == .polishQwen25_3bInstruct4bit && settings.polishMode != .on {
+                continue
+            }
+            if !modelStatusStore.canLoadOnDemand(kind) {
+                openModelDownload(kind: kind)
+                return false
+            }
         }
         return true
     }
@@ -442,7 +438,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func unloadPolishIfResident() async {
         guard modelStatusStore.isReady(.polishQwen25_3bInstruct4bit) else { return }
-        await mlxPolishManager.unload(.polishQwen25_3bInstruct4bit)
+        await engine.unload(.polishQwen25_3bInstruct4bit)
     }
 
     private func scheduleASRPrewarmIfPossible() {
@@ -466,7 +462,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         do {
-            try await modelManager.ensureReady(.asrWhisperLargeV3Turbo)
+            try await engine.download(.asrWhisperLargeV3Turbo)
         } catch {
             Log.asr.error("ASR prewarm failed: \(String(describing: error), privacy: .public)")
         }
@@ -474,24 +470,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func unloadModels() {
         Log.menu.info("unload models requested")
-        Task { [modelManager, mlxPolishManager] in
-            await modelManager!.unload(.asrWhisperLargeV3Turbo)
-            await mlxPolishManager!.unload(.polishQwen25_3bInstruct4bit)
+        Task { [engine] in
+            await engine?.unloadAllModels()
         }
     }
 
     // MARK: - Model download window
 
     private func openModelDownload(kind: ModelKind) {
-        let manager: any ModelLifecycle
-        switch kind {
-        case .asrWhisperLargeV3Turbo:       manager = modelManager
-        case .polishQwen25_3bInstruct4bit:   manager = mlxPolishManager
-        }
         let view = ModelDownloadView(
             store: modelStatusStore,
             kind: kind,
-            onStart: { [weak self] in self?.startModelDownload(kind: kind, manager: manager) },
+            onStart: { [weak self] in self?.startModelDownload(kind: kind) },
             onCancel: { [weak self] in self?.modelDownloadWindow?.close() }
         )
         let host = NSHostingController(rootView: view)
@@ -511,10 +501,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate()
     }
 
-    private func startModelDownload(kind: ModelKind, manager: any ModelLifecycle) {
-        Task {
+    private func startModelDownload(kind: ModelKind) {
+        Task { [engine] in
             do {
-                try await manager.ensureDownloaded(kind)
+                try await engine?.download(kind)
             } catch {
                 Log.state.error("model download failed (\(kind.rawValue, privacy: .public)): \(String(describing: error), privacy: .public)")
             }
@@ -550,8 +540,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let view = SettingsView(
             settings: settings,
             modelStatusStore: modelStatusStore,
-            onDownloadAsr: { [weak self] in self?.openModelDownload(kind: .asrWhisperLargeV3Turbo) },
-            onDownloadPolish: { [weak self] in self?.openModelDownload(kind: .polishQwen25_3bInstruct4bit) },
+            requiredModelKinds: engine.requiredModelKinds,
+            polishAvailable: engine.polish != nil,
+            onDownload: { [weak self] kind in self?.openModelDownload(kind: kind) },
             firstRunState: firstRunState,
             onReopenOnboarding: { [weak self] in self?.openOnboarding() }
         )

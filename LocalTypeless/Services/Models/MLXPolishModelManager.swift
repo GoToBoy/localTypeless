@@ -1,3 +1,4 @@
+#if APPLE_SILICON_ENGINE
 import Foundation
 import Hub
 import MLXLLM
@@ -140,3 +141,4 @@ actor MLXPolishModelManager: PolishModelManaging {
         return result
     }
 }
+#endif

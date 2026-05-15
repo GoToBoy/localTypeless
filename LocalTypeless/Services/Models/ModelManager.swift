@@ -1,5 +1,4 @@
 import Foundation
-import WhisperKit
 
 /// Shared lifecycle operations every model manager must implement.
 protocol ModelLifecycle: Actor {
@@ -15,13 +14,10 @@ protocol ModelLifecycle: Actor {
     func unload(_ kind: ModelKind) async
 }
 
-/// ASR-specific manager protocol: exposes the underlying WhisperKit instance.
-protocol ASRModelManaging: ModelLifecycle {
-    /// nil until ensureReady succeeds.
-    var whisperKit: WhisperKit? { get async }
-}
-
-/// Polish-specific manager protocol: hides MLX types behind a generation call.
+/// Polish-specific manager protocol: hides LLM backend types (MLX, llama.cpp,
+/// remote API, …) behind a single generation call. ASR managers don't share a
+/// protocol because the WhisperKit handle is a concrete type leak — each ASR
+/// service holds its concrete manager directly.
 protocol PolishModelManaging: ModelLifecycle {
     /// Run a single-turn chat prompt and return the generated text.
     func generate(system: String, user: String) async throws -> String

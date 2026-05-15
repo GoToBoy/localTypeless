@@ -91,6 +91,40 @@ final class DictationPipelineTests: XCTestCase {
         XCTAssertEqual(try history.all().count, 0)
     }
 
+    func test_nilPolish_injectsRawTranscript() async throws {
+        let history = InMemoryHistoryStore()
+        let injector = RecordingTextInjector()
+        let pipeline = DictationPipeline(.init(
+            asr: StubASRService(fixedText: "intel transcript", language: "en"),
+            polish: nil,
+            injector: injector,
+            historyStore: history,
+            audioStore: nil
+        ))
+
+        var events: [String] = []
+        await pipeline.run(makeInput(buffer: makeBuffer())) { event in
+            switch event {
+            case .transcribing: events.append("transcribing")
+            case .polishing:    events.append("polishing")
+            case .injecting:    events.append("injecting")
+            case .copyFallback: events.append("copyFallback")
+            case .done:         events.append("done")
+            case .failed(let m): events.append("failed:\(m)")
+            }
+        }
+
+        // With `polish: nil` the pipeline skips the polishing stage entirely —
+        // no `.polishing` event fires (the StateMachine handles the transcribing
+        // → injecting jump via `startInjecting()`), and the raw transcript is
+        // what reaches the injector and history store.
+        XCTAssertEqual(events, ["transcribing", "injecting", "done"])
+        XCTAssertEqual(injector.injected, "intel transcript")
+        let stored = try history.all()
+        XCTAssertEqual(stored.first?.polishedText, "intel transcript")
+        XCTAssertEqual(stored.first?.rawTranscript, "intel transcript")
+    }
+
     func test_polishFailure_fallsBackToRawTranscript() async throws {
         let history = InMemoryHistoryStore()
         let injector = RecordingTextInjector()

@@ -1,3 +1,4 @@
+#if APPLE_SILICON_ENGINE
 import XCTest
 import AVFoundation
 @testable import LocalTypeless
@@ -87,3 +88,4 @@ final class WhisperKitASRServiceTests: XCTestCase {
         return Array(UnsafeBufferPointer(start: ptr, count: Int(outBuf.frameLength)))
     }
 }
+#endif

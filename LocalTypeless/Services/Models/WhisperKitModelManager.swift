@@ -1,7 +1,8 @@
+#if APPLE_SILICON_ENGINE
 import Foundation
 import WhisperKit
 
-actor WhisperKitModelManager: ASRModelManaging {
+actor WhisperKitModelManager: ModelLifecycle {
 
     private let store: ModelStatusStore
     private var kit: WhisperKit?
@@ -116,3 +117,4 @@ actor WhisperKitModelManager: ASRModelManaging {
         await MainActor.run { store.set(.downloaded, for: kind) }
     }
 }
+#endif

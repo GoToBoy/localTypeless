@@ -9,15 +9,21 @@ struct ModelDownloadView: View {
     private var title: String {
         switch (kind, store.status(for: kind)) {
         case (.asrWhisperLargeV3Turbo, .notDownloaded),
-             (.asrWhisperLargeV3Turbo, .failed):
+             (.asrWhisperLargeV3Turbo, .failed),
+             (.asrWhisperCppSmall, .notDownloaded),
+             (.asrWhisperCppSmall, .failed):
             return String(localized: "Download speech model")
-        case (.asrWhisperLargeV3Turbo, .downloaded):
+        case (.asrWhisperLargeV3Turbo, .downloaded),
+             (.asrWhisperCppSmall, .downloaded):
             return String(localized: "Speech model downloaded")
-        case (.asrWhisperLargeV3Turbo, .downloading):
+        case (.asrWhisperLargeV3Turbo, .downloading),
+             (.asrWhisperCppSmall, .downloading):
             return String(localized: "Downloading speech model")
-        case (.asrWhisperLargeV3Turbo, .loading):
+        case (.asrWhisperLargeV3Turbo, .loading),
+             (.asrWhisperCppSmall, .loading):
             return String(localized: "Loading speech model")
-        case (.asrWhisperLargeV3Turbo, .resident):
+        case (.asrWhisperLargeV3Turbo, .resident),
+             (.asrWhisperCppSmall, .resident):
             return String(localized: "Speech model ready")
 
         case (.polishQwen25_3bInstruct4bit, .notDownloaded),
@@ -51,6 +57,8 @@ struct ModelDownloadView: View {
             return String(localized: "~1.5 GB · offline after download")
         case .polishQwen25_3bInstruct4bit:
             return String(localized: "~2 GB · offline after download")
+        case .asrWhisperCppSmall:
+            return String(localized: "~470 MB · offline after download")
         }
     }
 
@@ -58,6 +66,7 @@ struct ModelDownloadView: View {
         switch kind {
         case .asrWhisperLargeV3Turbo:       return "waveform"
         case .polishQwen25_3bInstruct4bit:   return "sparkles"
+        case .asrWhisperCppSmall:           return "waveform"
         }
     }
 

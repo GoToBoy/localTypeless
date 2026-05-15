@@ -1,3 +1,4 @@
+#if APPLE_SILICON_ENGINE
 import Foundation
 @preconcurrency import WhisperKit
 
@@ -15,17 +16,11 @@ enum WhisperKitASRError: LocalizedError {
     }
 }
 
-/// Language mode the user can force. `nil` means auto-detect.
-struct ASROptions: Sendable {
-    var forcedLanguage: String?  // BCP-47 ("en", "zh") — nil = auto
-    static let auto = ASROptions(forcedLanguage: nil)
-}
-
 // @unchecked Sendable: stored fields are either `let` or NSLock-protected, and collaborators
-// (ASRModelManaging is an actor, AudioBuffer is lock-protected) handle their own synchronization.
+// (WhisperKitModelManager is an actor, AudioBuffer is lock-protected) handle their own synchronization.
 final class WhisperKitASRService: ASRService, @unchecked Sendable {
 
-    private let manager: any ASRModelManaging
+    private let manager: WhisperKitModelManager
     private var _options: ASROptions
     private let optionsLock = NSLock()
 
@@ -38,7 +33,7 @@ final class WhisperKitASRService: ASRService, @unchecked Sendable {
         optionsLock.lock(); _options = new; optionsLock.unlock()
     }
 
-    init(manager: any ASRModelManaging, options: ASROptions = .auto) {
+    init(manager: WhisperKitModelManager, options: ASROptions = .auto) {
         self.manager = manager
         self._options = options
     }
@@ -91,3 +86,4 @@ final class WhisperKitASRService: ASRService, @unchecked Sendable {
         }
     }
 }
+#endif

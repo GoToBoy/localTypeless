@@ -1,0 +1,14 @@
+include:
+  - project.base.yml
+name: LocalTypelessPortable
+settings:
+  base:
+    ARCHS: x86_64
+packages:
+  SwiftWhisper:
+    url: https://github.com/exPHAT/SwiftWhisper
+    from: 1.2.0
+targets:
+  LocalTypeless:
+    dependencies:
+      - package: SwiftWhisper

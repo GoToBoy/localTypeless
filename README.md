@@ -31,20 +31,36 @@ calls in the recording, transcription, polish, paste, or history path.
   permissions.
 - Localized UI in English and Simplified Chinese.
 
+## Build flavors
+
+Two builds, two project specs, both 100% local — no audio or text ever leaves the device.
+
+| Flavor | Spec | ASR | Polish | Target hardware |
+|---|---|---|---|---|
+| **Apple Silicon** (default) | [project.yml](project.yml) | WhisperKit (Core ML + ANE) | MLX (Qwen 2.5 3B 4-bit) | M-series Macs |
+| **Portable** | [project.portable.yml](project.portable.yml) | whisper.cpp via [SwiftWhisper](https://github.com/exPHAT/SwiftWhisper) (`ggml-small`, ~470 MB) | none | Intel Mac |
+
+Both inherit shared settings from [project.base.yml](project.base.yml). Engine selection is compile-time via the `APPLE_SILICON_ENGINE` flag — see [EngineFactory.swift](LocalTypeless/Services/Engines/EngineFactory.swift).
+
 ## Build
 
 ```sh
 make bootstrap-signing # create the stable local signing identity once
 make generate          # regenerate LocalTypeless.xcodeproj from project.yml
-make build             # build the app
-make test              # run unit tests; model tests are skipped by default
-make run               # launch the debug build
+make build             # build the Apple Silicon flavor (.app at build/arm64/...)
+make test              # Apple Silicon + run unit tests
+make run               # launch the debug build (arm64)
 make install           # install, sign, and open /Applications/LocalTypeless.app
+
+# Portable / Intel x86_64 flavor — no MLX, no LLM polish; whisper.cpp ASR only
+make build-portable    # .app at build/x86_64/...
+make test-portable     # portable unit tests
+
 make clean             # remove build artifacts and generated project files
 ```
 
-The Xcode project is generated from `project.yml` with XcodeGen. Do not edit
-`LocalTypeless.xcodeproj/` by hand.
+The Xcode projects are generated from `project.yml` / `project.portable.yml`
+with XcodeGen. Do not edit either `*.xcodeproj/` by hand.
 
 ## Requirements
 

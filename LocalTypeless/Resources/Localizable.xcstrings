@@ -8,6 +8,36 @@
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "快捷键" } }
       }
     },
+    "Speech (Whisper Large v3 Turbo)" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Speech (Whisper Large v3 Turbo)" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "语音识别（Whisper Large v3 Turbo）" } }
+      }
+    },
+    "Polish (Qwen 2.5 3B 4-bit)" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Polish (Qwen 2.5 3B 4-bit)" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "润色（Qwen 2.5 3B 4-bit）" } }
+      }
+    },
+    "Speech (whisper.cpp small)" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Speech (whisper.cpp small)" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "语音识别（whisper.cpp small）" } }
+      }
+    },
+    "Downloaded model file is too small — try again" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Downloaded model file is too small — try again" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "下载的模型文件太小，请重试" } }
+      }
+    },
+    "~470 MB · offline after download" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "~470 MB · offline after download" } },
+        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "约 470 MB · 下载后离线" } }
+      }
+    },
     "Speech" : {
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Speech" } },
@@ -102,18 +132,6 @@
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Models" } },
         "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "模型" } }
-      }
-    },
-    "Speech (Whisper Large v3 Turbo)" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Speech (Whisper Large v3 Turbo)" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "语音（Whisper Large v3 Turbo）" } }
-      }
-    },
-    "Polish (Qwen2.5-3B-Instruct 4bit)" : {
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Polish (Qwen2.5-3B-Instruct 4bit)" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "润色（Qwen2.5-3B-Instruct 4bit）" } }
       }
     },
     "English" : {

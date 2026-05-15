@@ -1,3 +1,4 @@
+#if APPLE_SILICON_ENGINE
 import XCTest
 @testable import LocalTypeless
 
@@ -73,3 +74,4 @@ func XCTAssertThrowsErrorAsync<T>(
         // expected
     }
 }
+#endif

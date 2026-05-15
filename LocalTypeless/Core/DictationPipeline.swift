@@ -1,7 +1,17 @@
 import Foundation
 
 /// Event-driven pipeline that runs the end-to-end dictation flow for a single
-/// utterance: transcribe → (optional) save-audio → polish → inject → persist.
+/// utterance: transcribe → (optional) save-audio → (optional) polish → inject → persist.
+///
+/// Polish runs only if both gates are open:
+///   1. `Dependencies.polish` is non-nil — the engine actually provides an LLM
+///      backend (e.g. Apple Silicon's MLX; Intel/portable builds pass nil).
+///   2. `Input.polishEnabled` is true — `AppDelegate` resolved the user's
+///      `PolishMode` setting against `MemoryAdvisor` and decided to run it.
+/// When either gate is closed, the transcript is normalized and injected
+/// as-is. The `.polishing` event fires only when polish actually runs, so
+/// `StateMachine.startInjecting()` can move straight from `.transcribing`
+/// to `.injecting`.
 ///
 /// The pipeline is intentionally free of `StateMachine` / UI coupling; it emits
 /// `Event`s through a callback so the caller can map them to state transitions
@@ -11,7 +21,10 @@ final class DictationPipeline {
 
     struct Dependencies {
         let asr: ASRService
-        let polish: PolishService
+        /// `nil` disables the polish stage entirely — pipeline injects the raw
+        /// transcript. Used by engines that ship without an LLM (e.g. Intel
+        /// builds where MLX isn't available).
+        let polish: PolishService?
         let injector: TextInjector
         let historyStore: HistoryStore?
         let audioStore: AudioStore?
@@ -83,7 +96,7 @@ final class DictationPipeline {
         }
 
         let polished: String
-        if input.polishEnabled {
+        if let polish, input.polishEnabled {
             onEvent(.polishing)
             do {
                 let generated = try await withTimeout(input.polishTimeout) {

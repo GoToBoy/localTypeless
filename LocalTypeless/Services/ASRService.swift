@@ -16,6 +16,14 @@ protocol ASRService: AnyObject, Sendable {
     func transcribe(_ audio: AudioBuffer) async throws -> Transcript
 }
 
+/// Language mode the user can force on ASR. `nil` means auto-detect.
+/// Lives with the protocol (rather than the WhisperKit implementation) so
+/// `DictationEngine.setASROptions(_:)` is available on every build.
+struct ASROptions: Sendable {
+    var forcedLanguage: String?  // BCP-47 ("en", "zh") — nil = auto
+    static let auto = ASROptions(forcedLanguage: nil)
+}
+
 enum TranscriptLanguage {
     static func normalized(reported: String?, fallback: String? = nil, text: String) -> String {
         if containsHanText(text) {

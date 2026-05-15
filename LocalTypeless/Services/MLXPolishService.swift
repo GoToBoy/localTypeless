@@ -1,3 +1,4 @@
+#if APPLE_SILICON_ENGINE
 import Foundation
 
 enum MLXPolishError: LocalizedError {
@@ -44,3 +45,4 @@ final class MLXPolishService: PolishService, @unchecked Sendable {
         }
     }
 }
+#endif
