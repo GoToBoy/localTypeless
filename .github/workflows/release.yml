@@ -84,10 +84,19 @@ jobs:
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
 
           CERT_PATH="$RUNNER_TEMP/cert.p12"
+          CERT_PEM="$RUNNER_TEMP/cert.pem"
           echo "$CERT_P12_BASE64" | base64 --decode > "$CERT_PATH"
           security import "$CERT_PATH" \
             -P "$CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
-          rm "$CERT_PATH"
+
+          # The self-signed CI cert needs to be marked as a trusted codesigning
+          # root for `security find-identity -p codesigning -v` (and the
+          # downstream `make sign-ci` lookup) to consider it valid.
+          openssl pkcs12 -in "$CERT_PATH" -nokeys -clcerts \
+            -passin "pass:$CERT_PASSWORD" -out "$CERT_PEM"
+          security add-trusted-cert -r trustRoot -p codeSign \
+            -k "$KEYCHAIN_PATH" "$CERT_PEM"
+          rm "$CERT_PATH" "$CERT_PEM"
 
           security set-key-partition-list \
             -S apple-tool:,apple:,codesign: \
@@ -96,6 +105,9 @@ jobs:
           security list-keychains -d user -s "$KEYCHAIN_PATH" \
             "$(security default-keychain -d user | tr -d ' "')"
           security default-keychain -d user -s "$KEYCHAIN_PATH"
+
+          echo "Imported identity:"
+          security find-identity -p codesigning -v "$KEYCHAIN_PATH"
 
       - name: Build (unsigned)
         env:
