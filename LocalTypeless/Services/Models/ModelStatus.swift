@@ -21,6 +21,7 @@ enum ModelKind: String, Sendable, Hashable, CaseIterable {
             return String(localized: "Speech (whisper.cpp small)")
         }
     }
+
 }
 
 enum ModelStatus: Sendable, Equatable {

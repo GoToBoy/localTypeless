@@ -16,7 +16,9 @@ final class PortableEngine: DictationEngine {
     private let modelManager: WhisperCppModelManager
     private let whisperASR: WhisperCppASRService
 
-    var requiredModelKinds: [ModelKind] { [.asrWhisperCppSmall] }
+    var modelSlots: [EngineModelSlot] {
+        [EngineModelSlot(role: .speech, kind: .asrWhisperCppSmall)]
+    }
 
     init(store: ModelStatusStore) {
         let mgr = WhisperCppModelManager(store: store)

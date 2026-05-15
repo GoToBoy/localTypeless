@@ -16,7 +16,12 @@ enum ModelStorage {
     }
 
     static func isDownloaded(_ kind: ModelKind) -> Bool {
-        downloadedModelDirectory(kind) != nil
+        switch kind {
+        case .asrWhisperCppSmall:
+            return isWhisperCppModelDownloaded()
+        case .asrWhisperLargeV3Turbo, .polishQwen25_3bInstruct4bit:
+            return downloadedModelDirectory(kind) != nil
+        }
     }
 
     static func downloadedModelDirectory(_ kind: ModelKind) -> URL? {
@@ -65,6 +70,22 @@ enum ModelStorage {
             .appendingPathComponent("Qwen2.5-3B-Instruct-4bit", isDirectory: true)
 
         return hasPolishModel(in: dir) ? dir : nil
+    }
+
+    private static func isWhisperCppModelDownloaded() -> Bool {
+        guard let modelFile = try? whisperCppModelFileURL() else { return false }
+        var isDirectory = ObjCBool(false)
+        guard FileManager.default.fileExists(atPath: modelFile.path, isDirectory: &isDirectory),
+              !isDirectory.boolValue else {
+            return false
+        }
+        let attrs = try? FileManager.default.attributesOfItem(atPath: modelFile.path)
+        let size = (attrs?[.size] as? Int64) ?? 0
+        return size > 100 * 1024 * 1024
+    }
+
+    private static func whisperCppModelFileURL() throws -> URL {
+        try modelsDirectory().appendingPathComponent("ggml-small.bin")
     }
 
     private static func hasWhisperModel(in directory: URL) -> Bool {

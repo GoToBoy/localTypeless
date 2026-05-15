@@ -65,6 +65,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             stateMachine: stateMachine,
             modelStatusStore: modelStatusStore,
             settings: settings,
+            modelSlots: engine.modelSlots,
             onOpenSettings: { [weak self] in self?.openSettings() },
             onOpenHistory: { [weak self] in self?.openHistory() },
             onUnloadModels: { [weak self] in self?.unloadModels() }
@@ -452,8 +453,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func prewarmASRIfPossible() async {
         modelStatusStore.refreshDownloadedStatuses()
-        guard modelStatusStore.canLoadOnDemand(.asrWhisperLargeV3Turbo),
-              !modelStatusStore.isReady(.asrWhisperLargeV3Turbo) else {
+        guard let kind = engine.speechModelKind,
+              modelStatusStore.canLoadOnDemand(kind),
+              !modelStatusStore.isReady(kind) else {
             return
         }
         let snapshot = MemoryAdvisor.currentSnapshot()
@@ -462,7 +464,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         do {
-            try await engine.download(.asrWhisperLargeV3Turbo)
+            try await engine.download(kind)
         } catch {
             Log.asr.error("ASR prewarm failed: \(String(describing: error), privacy: .public)")
         }

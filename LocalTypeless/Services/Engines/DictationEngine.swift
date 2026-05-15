@@ -1,5 +1,15 @@
 import Foundation
 
+enum EngineModelRole: Sendable, Equatable {
+    case speech
+    case polish
+}
+
+struct EngineModelSlot: Sendable, Equatable {
+    let role: EngineModelRole
+    let kind: ModelKind
+}
+
 /// Bundles the platform-specific implementations of ASR, polish, and model
 /// lifecycle into a single object so `AppDelegate` doesn't need to know which
 /// concrete services are in use.
@@ -19,6 +29,11 @@ protocol DictationEngine: AnyObject {
     /// `AppDelegate.ensureModelsReady()` iterates this list.
     var requiredModelKinds: [ModelKind] { get }
 
+    /// Role-oriented model list for UI and policy surfaces. Concrete engines
+    /// own the mapping from product roles (speech / polish) to backend model
+    /// files so UI code doesn't branch on platform-specific `ModelKind` cases.
+    var modelSlots: [EngineModelSlot] { get }
+
     /// Forwards an ASR-options change (e.g. forced language) to whatever
     /// concrete ASR service this engine wraps. No-op for engines whose ASR
     /// doesn't support runtime options.
@@ -36,4 +51,14 @@ protocol DictationEngine: AnyObject {
 
     /// Releases every loaded model from RAM. Files on disk are retained.
     func unloadAllModels() async
+}
+
+extension DictationEngine {
+    var requiredModelKinds: [ModelKind] {
+        modelSlots.map(\.kind)
+    }
+
+    var speechModelKind: ModelKind? {
+        modelSlots.first { $0.role == .speech }?.kind
+    }
 }

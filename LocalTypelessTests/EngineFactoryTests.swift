@@ -14,6 +14,8 @@ final class EngineFactoryTests: XCTestCase {
         // requiredModelKinds must be a stable, finite list.
         let kinds = engine.requiredModelKinds
         XCTAssertEqual(Set(kinds).count, kinds.count, "requiredModelKinds must not contain duplicates")
+        XCTAssertEqual(engine.modelSlots.map(\.kind), kinds)
+        XCTAssertEqual(engine.modelSlots.filter { $0.role == .speech }.count, 1)
     }
 
     func test_factory_returns_apple_silicon_engine_on_apple_silicon_build() {
@@ -26,11 +28,18 @@ final class EngineFactoryTests: XCTestCase {
         XCTAssertNotNil(engine.polish, "Apple Silicon engine must provide polish")
         XCTAssertEqual(Set(engine.requiredModelKinds),
                        [.asrWhisperLargeV3Turbo, .polishQwen25_3bInstruct4bit])
+        XCTAssertEqual(engine.modelSlots, [
+            EngineModelSlot(role: .speech, kind: .asrWhisperLargeV3Turbo),
+            EngineModelSlot(role: .polish, kind: .polishQwen25_3bInstruct4bit)
+        ])
         #else
         XCTAssertTrue(engine is PortableEngine,
                       "Portable build must return PortableEngine, got \(type(of: engine))")
         XCTAssertNil(engine.polish, "Portable engine must not provide polish (Intel has no MLX)")
         XCTAssertEqual(Set(engine.requiredModelKinds), [.asrWhisperCppSmall])
+        XCTAssertEqual(engine.modelSlots, [
+            EngineModelSlot(role: .speech, kind: .asrWhisperCppSmall)
+        ])
         #endif
     }
 

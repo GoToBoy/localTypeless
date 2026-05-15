@@ -9,6 +9,7 @@ final class MenuBarController {
     private let stateMachine: StateMachine
     private let modelStatusStore: ModelStatusStore
     private let settings: AppSettings
+    private let modelSlots: [EngineModelSlot]
     private let onOpenSettings: () -> Void
     private let onOpenHistory: () -> Void
     private let onUnloadModels: () -> Void
@@ -17,6 +18,7 @@ final class MenuBarController {
         stateMachine: StateMachine,
         modelStatusStore: ModelStatusStore,
         settings: AppSettings,
+        modelSlots: [EngineModelSlot],
         onOpenSettings: @escaping () -> Void,
         onOpenHistory: @escaping () -> Void,
         onUnloadModels: @escaping () -> Void
@@ -25,6 +27,7 @@ final class MenuBarController {
         self.stateMachine = stateMachine
         self.modelStatusStore = modelStatusStore
         self.settings = settings
+        self.modelSlots = modelSlots
         self.onOpenSettings = onOpenSettings
         self.onOpenHistory = onOpenHistory
         self.onUnloadModels = onUnloadModels
@@ -40,29 +43,15 @@ final class MenuBarController {
     private func configureMenu() {
         let menu = NSMenu()
 
-        let asrStatus = modelStatusStore.status(for: .asrWhisperLargeV3Turbo)
-        let asrLabel = NSMenuItem(
-            title: String(
-                format: String(localized: "ASR model: %@"),
-                asrStatus.displayLabel
-            ),
-            action: nil,
-            keyEquivalent: ""
-        )
-        asrLabel.isEnabled = false
-        menu.addItem(asrLabel)
-
-        let polishStatus = modelStatusStore.status(for: .polishQwen25_3bInstruct4bit)
-        let polishLabel = NSMenuItem(
-            title: String(
-                format: String(localized: "Polish model: %@"),
-                polishDisplayLabel(for: polishStatus)
-            ),
-            action: nil,
-            keyEquivalent: ""
-        )
-        polishLabel.isEnabled = false
-        menu.addItem(polishLabel)
+        for slot in modelSlots {
+            let item = NSMenuItem(
+                title: menuTitle(for: slot, status: modelStatusStore.status(for: slot.kind)),
+                action: nil,
+                keyEquivalent: ""
+            )
+            item.isEnabled = false
+            menu.addItem(item)
+        }
 
         menu.addItem(.separator())
 
@@ -84,8 +73,9 @@ final class MenuBarController {
     private func startObserving() {
         withObservationTracking {
             _ = stateMachine.state
-            _ = modelStatusStore.status(for: .asrWhisperLargeV3Turbo)
-            _ = modelStatusStore.status(for: .polishQwen25_3bInstruct4bit)
+            for slot in modelSlots {
+                _ = modelStatusStore.status(for: slot.kind)
+            }
             _ = settings.polishMode
         } onChange: { [weak self] in
             Task { @MainActor in
@@ -114,6 +104,21 @@ final class MenuBarController {
     @objc private func openSettingsAction() { onOpenSettings() }
     @objc private func openHistoryAction() { onOpenHistory() }
     @objc private func unloadAction() { onUnloadModels() }
+
+    private func menuTitle(for slot: EngineModelSlot, status: ModelStatus) -> String {
+        switch slot.role {
+        case .speech:
+            return String(
+                format: String(localized: "ASR model: %@"),
+                status.displayLabel
+            )
+        case .polish:
+            return String(
+                format: String(localized: "Polish model: %@"),
+                polishDisplayLabel(for: status)
+            )
+        }
+    }
 
     private func polishDisplayLabel(for status: ModelStatus) -> String {
         switch settings.polishMode {

@@ -14,8 +14,11 @@ final class AppleSiliconEngine: DictationEngine {
     private let polishManager: MLXPolishModelManager
     private let whisperASR: WhisperKitASRService
 
-    var requiredModelKinds: [ModelKind] {
-        [.asrWhisperLargeV3Turbo, .polishQwen25_3bInstruct4bit]
+    var modelSlots: [EngineModelSlot] {
+        [
+            EngineModelSlot(role: .speech, kind: .asrWhisperLargeV3Turbo),
+            EngineModelSlot(role: .polish, kind: .polishQwen25_3bInstruct4bit)
+        ]
     }
 
     init(store: ModelStatusStore) {
