@@ -1,0 +1,161 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version without leading v (e.g. 1.0.0). Used only with workflow_dispatch.'
+        required: true
+        type: string
+
+# Need contents:write so the workflow can create the GitHub Release and upload
+# the .zip assets to it. Everything else uses the default read-only token.
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - flavor: arm64
+            runner: macos-14
+            make_build: build-ci
+            app_path: build/arm64/Build/Products/Debug/LocalTypeless.app
+
+          - flavor: x86_64
+            runner: macos-13
+            make_build: build-portable-ci
+            app_path: build/x86_64/Build/Products/Debug/LocalTypeless.app
+
+    runs-on: ${{ matrix.runner }}
+    name: ${{ matrix.flavor }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Strip the leading `v` from a tag push (refs/tags/v1.0.0 -> 1.0.0); for
+      # workflow_dispatch take the value the user typed verbatim.
+      - name: Resolve version
+        id: ver
+        env:
+          DISPATCH_VERSION: ${{ inputs.version }}
+          REF_NAME: ${{ github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            VERSION="$DISPATCH_VERSION"
+          else
+            VERSION="${REF_NAME#v}"
+          fi
+          if [ -z "$VERSION" ]; then
+            echo "::error::could not determine release version"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Releasing version: $VERSION"
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Install xcodegen
+        run: brew install xcodegen
+
+      - name: Import signing certificate
+        env:
+          CERT_P12_BASE64: ${{ secrets.MACOS_SIGNING_CERTIFICATE_P12_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.MACOS_SIGNING_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
+        run: |
+          if [ -z "$CERT_P12_BASE64" ]; then
+            echo "::error::MACOS_SIGNING_CERTIFICATE_P12_BASE64 is required for release builds — release artifacts must be signed with the stable CI certificate so TCC grants survive across releases."
+            exit 1
+          fi
+
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          CERT_PATH="$RUNNER_TEMP/cert.p12"
+          echo "$CERT_P12_BASE64" | base64 --decode > "$CERT_PATH"
+          security import "$CERT_PATH" \
+            -P "$CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          rm "$CERT_PATH"
+
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH" >/dev/null
+
+          security list-keychains -d user -s "$KEYCHAIN_PATH" \
+            "$(security default-keychain -d user | tr -d ' "')"
+          security default-keychain -d user -s "$KEYCHAIN_PATH"
+
+      - name: Build (unsigned)
+        env:
+          MAKE_TARGET: ${{ matrix.make_build }}
+        run: make "$MAKE_TARGET"
+
+      - name: Verify binary architecture
+        env:
+          APP_PATH: ${{ matrix.app_path }}
+          EXPECTED_ARCH: ${{ matrix.flavor }}
+        run: |
+          BIN="$APP_PATH/Contents/MacOS/LocalTypeless"
+          file "$BIN"
+          file "$BIN" | grep -q "$EXPECTED_ARCH" || {
+            echo "::error::expected $EXPECTED_ARCH binary, got $(file "$BIN")"
+            exit 1
+          }
+
+      - name: Sign .app
+        env:
+          APP_PATH: ${{ matrix.app_path }}
+          SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+        run: |
+          if [ -z "$SIGNING_IDENTITY" ]; then
+            echo "::error::MACOS_SIGNING_IDENTITY is required for release builds."
+            exit 1
+          fi
+          make sign-ci \
+            CI_SIGN_IDENTITY="$SIGNING_IDENTITY" \
+            CI_SIGN_APP="$APP_PATH"
+
+      - name: Zip + checksum
+        id: pkg
+        env:
+          APP_PATH: ${{ matrix.app_path }}
+          FLAVOR: ${{ matrix.flavor }}
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          ASSET="LocalTypeless-${VERSION}-${FLAVOR}.zip"
+          ASSET_PATH="$RUNNER_TEMP/$ASSET"
+
+          cd "$(dirname "$APP_PATH")"
+          zip -ry "$ASSET_PATH" "$(basename "$APP_PATH")"
+          cd -
+
+          # Print sha256 to the log AND write a .sha256 sibling so users can
+          # verify their download against the published checksum.
+          shasum -a 256 "$ASSET_PATH" | tee "$ASSET_PATH.sha256"
+
+          echo "asset_path=$ASSET_PATH" >> "$GITHUB_OUTPUT"
+          echo "asset_sha256_path=$ASSET_PATH.sha256" >> "$GITHUB_OUTPUT"
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.ver.outputs.version }}
+          name: v${{ steps.ver.outputs.version }}
+          draft: true
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            ${{ steps.pkg.outputs.asset_path }}
+            ${{ steps.pkg.outputs.asset_sha256_path }}

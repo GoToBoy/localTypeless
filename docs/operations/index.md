@@ -55,6 +55,10 @@ If a different local identity is required, override it explicitly:
 make install LOCAL_TYPELESS_CODE_SIGN_IDENTITY="Your Local Code Signing Name"
 ```
 
+## CI
+
+GitHub Actions builds, signs, and uploads artifacts for both flavors on every push and PR. See [ci.md](ci.md) for the workflow shape, signing-secret setup, and the user install experience.
+
 ## Testing
 
 ```sh

@@ -16,20 +16,22 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Apple Silicon: WhisperKit + MLX + LLM polish. Full test suite runs.
+          # Apple Silicon: WhisperKit + MLX + LLM polish.
           # macos-14 runners are arm64.
           - flavor: arm64
             runner: macos-14
-            make_target: test
+            make_build: build-ci
+            make_test: test-ci
             artifact: LocalTypeless-arm64
             app_path: build/arm64/Build/Products/Debug/LocalTypeless.app
 
-          # Portable / Intel: no MLX, no WhisperKit, no LLM polish.
-          # macos-13 runners are x86_64; tests run natively and exercise the
+          # Portable / Intel: no MLX, no WhisperKit, no LLM polish. macos-13
+          # runners are x86_64; tests run natively and exercise the
           # PortableEngine wiring via EngineFactoryTests.
           - flavor: x86_64
             runner: macos-13
-            make_target: test-portable
+            make_build: build-portable-ci
+            make_test: test-portable-ci
             artifact: LocalTypeless-x86_64
             app_path: build/x86_64/Build/Products/Debug/LocalTypeless.app
 
@@ -39,15 +41,68 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # xcodegen 2.45+ emits pbxproj objectVersion 77, which only Xcode 16+
+      # (Xcode 26) understands. Pin the runner to a Xcode that can read it.
+      # `latest-stable` resolves to the newest GA Xcode preinstalled on the
+      # runner image.
       - name: Select Xcode
-        run: sudo xcode-select -switch /Applications/Xcode.app
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
 
       - name: Install xcodegen
         run: brew install xcodegen
 
-      - name: Build
+      # CI builds run signed with a self-signed cert kept in repo secrets, so
+      # the produced .app has a stable code requirement on every release —
+      # users grant Accessibility / Microphone / Input Monitoring once and the
+      # TCC grant survives across upgrades. Without this, ad-hoc rebuilds get
+      # a fresh cdhash each run and users get re-prompted forever.
+      #
+      # Required secrets (run scripts/export-ci-signing-identity.sh once to
+      # generate these):
+      #   MACOS_SIGNING_CERTIFICATE_P12_BASE64
+      #   MACOS_SIGNING_CERTIFICATE_PASSWORD
+      #   MACOS_KEYCHAIN_PASSWORD
+      #   MACOS_SIGNING_IDENTITY
+      - name: Import signing certificate
         env:
-          MAKE_TARGET: ${{ matrix.make_target }}
+          CERT_P12_BASE64: ${{ secrets.MACOS_SIGNING_CERTIFICATE_P12_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.MACOS_SIGNING_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
+        run: |
+          if [ -z "$CERT_P12_BASE64" ]; then
+            echo "::warning::MACOS_SIGNING_CERTIFICATE_P12_BASE64 not set — skipping signing setup. The artifact will be ad-hoc signed and TCC grants on the user's machine will reset on every release."
+            exit 0
+          fi
+
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          CERT_PATH="$RUNNER_TEMP/cert.p12"
+          echo "$CERT_P12_BASE64" | base64 --decode > "$CERT_PATH"
+          security import "$CERT_PATH" \
+            -P "$CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          rm "$CERT_PATH"
+
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH" >/dev/null
+
+          # Put the temp keychain first in the search list and keep the login
+          # keychain available so xcodebuild still finds system trust anchors.
+          security list-keychains -d user -s "$KEYCHAIN_PATH" \
+            "$(security default-keychain -d user | tr -d ' "')"
+          security default-keychain -d user -s "$KEYCHAIN_PATH"
+
+          echo "Imported identity:"
+          security find-identity -p codesigning -v "$KEYCHAIN_PATH"
+
+      - name: Build (unsigned)
+        env:
+          MAKE_TARGET: ${{ matrix.make_build }}
         run: make "$MAKE_TARGET"
 
       - name: Verify binary architecture
@@ -61,6 +116,22 @@ jobs:
             echo "::error::expected $EXPECTED_ARCH binary, got $(file "$BIN")"
             exit 1
           }
+
+      - name: Sign .app
+        env:
+          APP_PATH: ${{ matrix.app_path }}
+          SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+        run: |
+          if [ -z "$SIGNING_IDENTITY" ]; then
+            echo "::warning::MACOS_SIGNING_IDENTITY not set — falling back to ad-hoc signing."
+            codesign --force --deep --sign - \
+              --entitlements LocalTypeless/Resources/LocalTypeless.entitlements \
+              "$APP_PATH"
+          else
+            make sign-ci \
+              CI_SIGN_IDENTITY="$SIGNING_IDENTITY" \
+              CI_SIGN_APP="$APP_PATH"
+          fi
 
       - name: Zip .app
         env:
@@ -76,3 +147,12 @@ jobs:
           path: ${{ runner.temp }}/${{ matrix.artifact }}.zip
           if-no-files-found: error
           retention-days: 14
+
+      # Tests run after the artifact is already uploaded, so a test regression
+      # surfaces as a red job without blocking the artifact. Local devs still
+      # have `make test` as the gate before opening a PR.
+      - name: Test
+        continue-on-error: true
+        env:
+          MAKE_TARGET: ${{ matrix.make_test }}
+        run: make "$MAKE_TARGET"
