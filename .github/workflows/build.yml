@@ -83,8 +83,10 @@ jobs:
 
           CERT_PATH="$RUNNER_TEMP/cert.p12"
           echo "$CERT_P12_BASE64" | base64 --decode > "$CERT_PATH"
+          # Note: do NOT pass `-t cert` — that restricts the import to cert
+          # items and silently drops the private key, leaving no identity.
           security import "$CERT_PATH" \
-            -P "$CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+            -P "$CERT_PASSWORD" -A -f pkcs12 -k "$KEYCHAIN_PATH"
           rm "$CERT_PATH"
           # NOTE: we intentionally do NOT run `security add-trusted-cert` here.
           # It writes the user trust domain, which on macOS triggers a GUI
@@ -102,8 +104,14 @@ jobs:
             "$(security default-keychain -d user | tr -d ' "')"
           security default-keychain -d user -s "$KEYCHAIN_PATH"
 
-          echo "Imported identity (any policy — codesign looks up by CN, not by trust):"
-          security find-identity -v "$KEYCHAIN_PATH"
+          echo "=== Keychain search list ==="
+          security list-keychains -d user
+          echo "=== All certs in build keychain ==="
+          security find-certificate -a "$KEYCHAIN_PATH" | grep -E '"alis"|"labl"' || true
+          echo "=== Identities (valid, any policy) ==="
+          security find-identity -v "$KEYCHAIN_PATH" || true
+          echo "=== Identities (all, including untrusted) ==="
+          security find-identity "$KEYCHAIN_PATH" || true
 
       - name: Build (unsigned)
         env:

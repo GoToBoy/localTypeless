@@ -85,8 +85,10 @@ jobs:
 
           CERT_PATH="$RUNNER_TEMP/cert.p12"
           echo "$CERT_P12_BASE64" | base64 --decode > "$CERT_PATH"
+          # Note: do NOT pass `-t cert` — that restricts the import to cert
+          # items and silently drops the private key, leaving no identity.
           security import "$CERT_PATH" \
-            -P "$CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+            -P "$CERT_PASSWORD" -A -f pkcs12 -k "$KEYCHAIN_PATH"
           rm "$CERT_PATH"
           # NOTE: we intentionally do NOT run `security add-trusted-cert` here.
           # It writes the user trust domain, which on macOS triggers a GUI
