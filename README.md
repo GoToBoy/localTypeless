@@ -38,9 +38,23 @@ Two builds, two project specs, both 100% local — no audio or text ever leaves 
 | Flavor | Spec | ASR | Polish | Target hardware |
 |---|---|---|---|---|
 | **Apple Silicon** (default) | [project.yml](project.yml) | WhisperKit (Core ML + ANE) | MLX (Qwen 2.5 3B 4-bit) | M-series Macs |
-| **Portable** | [project.portable.yml](project.portable.yml) | whisper.cpp via [SwiftWhisper](https://github.com/exPHAT/SwiftWhisper) (`ggml-small`, ~470 MB) | none | Intel Mac |
+| **Portable** | [project.portable.yml](project.portable.yml) | whisper.cpp via [SwiftWhisper](https://github.com/exPHAT/SwiftWhisper) (`ggml-small`, ~470 MB) | none | Intel Mac, experimental only |
 
 Both inherit shared settings from [project.base.yml](project.base.yml). Engine selection is compile-time via the `APPLE_SILICON_ENGINE` flag — see [EngineFactory.swift](LocalTypeless/Services/Engines/EngineFactory.swift).
+
+### Intel / Portable status
+
+The portable Intel build is experimental and is not considered production-ready
+for normal dictation. It can record microphone audio, but ASR runs through
+whisper.cpp on CPU instead of WhisperKit/Core ML/ANE. On the current benchmark
+fixtures, the default `ggml-small` model took about 31-32 seconds to transcribe
+2.3-2.5 seconds of English or Chinese audio, which is too slow for hotkey
+dictation.
+
+Smaller whisper.cpp models improve latency but still carry tradeoffs: `base`
+was around 14 seconds on the same fixtures, while `tiny` was around 9 seconds
+with higher accuracy risk. Treat Intel artifacts as compatibility experiments,
+not as the recommended user build. The supported path is Apple Silicon.
 
 ## Build
 
